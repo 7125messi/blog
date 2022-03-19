@@ -1,4 +1,4 @@
-greenlet==0.4.5
+greenlet
 oauthlib==0.7.2
 paho-mqtt==1.0
 tzlocal==1.1.2
