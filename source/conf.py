@@ -70,8 +70,8 @@ htmlhelp_basename = '7125MESSI BLOG'
 # 注：在生成html的时候这句话要注释
 # latex_engine = 'xelatex'
 
-latex_elements={# The paper size ('letterpaper' or 'a4paper').
-'papersize':'a4paper',# The font size ('10pt', '11pt' or '12pt').
+latex_elements={# The papersize ('letterpaper' or 'a4paper').
+'papersize':'letterpaper',# The font size ('10pt', '11pt' or '12pt').
 'pointsize':'12pt','classoptions':',oneside','babel':'',#必须
 'inputenc':'',#必须
 'utf8extra':'',#必须
