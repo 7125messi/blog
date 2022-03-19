@@ -1,0 +1,552 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Spark分布式计算 &mdash; 7125MESSI&#39;s BLOG 1.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Spark性能调优" href="Spark%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98.html" />
+    <link rel="prev" title="Python并行计算" href="Python%E5%B9%B6%E8%A1%8C%E8%AE%A1%E7%AE%97.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> 7125MESSI's BLOG
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">目录</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Python%E5%B9%B6%E8%A1%8C%E8%AE%A1%E7%AE%97.html">Python并行计算</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Spark分布式计算</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Spark%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98.html">Spark性能调优</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">7125MESSI's BLOG</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Spark分布式计算</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/Spark分布式计算.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="spark">
+<h1>Spark分布式计算<a class="headerlink" href="#spark" title="Permalink to this headline">¶</a></h1>
+<dl class="field-list simple">
+<dt class="field-odd">Date</dt>
+<dd class="field-odd"><p>2022-01-14T10:49:07+08:00</p>
+</dd>
+</dl>
+<p>[项目经验总结]</p>
+<p>从事数据相关工作，最喜欢用的工具就是基于Pandas、Jupyter
+Lab等工具，拿到样本数据，单机上快速迭代试验验证想法，这确实很方便，但是等到模型部署上线的时候，数据量很大，很难单机就搞定，目前主流的做法是用Spark分布式计算解决。</p>
+<p>但是如果利用纯 PySpark API，就需要将Pandas
+API重写成PySpark的API，虽然很多API很类似，但是多少有些不一样，而且有些逻辑用用Pandas生态很容易实现，而利用PySpark却很复杂，遇到PySpark没有的API，动辄就要写UDF函数了，所以实际生产部署的时候，如果采用此方式，改造成本会有点高。</p>
+<p>有没有简单的方法？</p>
+<p>我们知道通常Spark也是作为客户端，使用Hadoop的YARN作为集群的资源管理和调度器。Spark集群由Driver,
+Cluster Manager（Standalone,Yarn 或 Mesos），以及Worker
+Node组成。对于每个Spark应用程序，Worker
+Node上存在一个Executor进程，Executor进程中包括多个Task线程。对于PySpark,为了不破坏Spark已有的运行时架构，Spark在外围包装一层Python
+API。在Driver端，借助Py4j实现Python和Java的交互，进而实现通过Python编写Spark应用程序。在Executor端，则不需要借助Py4j，因为Executor端运行的Task逻辑是由Driver发过来的，那是序列化后的字节码。</p>
+<p>Spark运行流程</p>
+<ul class="simple">
+<li><p>Application首先被Driver构建DAG图并分解成Stage。</p></li>
+<li><p>然后Driver向Cluster Manager申请资源。</p></li>
+<li><p>Cluster Manager向某些Work Node发送征召信号。</p></li>
+<li><p>被征召的Work Node启动Executor进程响应征召，并向Driver申请任务。</p></li>
+<li><p>Driver分配Task给Work Node。</p></li>
+<li><p>Executor以Stage为单位执行Task，期间Driver进行监控。</p></li>
+<li><p>Driver收到Executor任务完成的信号后向Cluster Manager发送注销信号。</p></li>
+<li><p>Cluster Manager向Work Node发送释放资源信号。</p></li>
+<li><p>Work Node对应Executor停止运行。</p></li>
+</ul>
+<p>所以简单的做法跑PySparkr任务时利用YARN的分发机制，将可以并行计算的任务同时分发到不同Work
+Node计算，然后每个节点则利用由原来的Pandas API计算即可。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">calendar</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span><span class="n">List</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">linear_model</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.sql.types</span> <span class="kn">import</span> <span class="n">StringType</span><span class="p">,</span> <span class="n">IntegerType</span><span class="p">,</span> <span class="n">DoubleType</span><span class="p">,</span> <span class="n">DateType</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="kn">import</span> <span class="n">functions</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="kn">import</span> <span class="n">pandas_udf</span><span class="p">,</span> <span class="n">PandasUDFType</span><span class="p">,</span> <span class="n">udf</span><span class="p">,</span> <span class="n">broadcast</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="kn">import</span> <span class="n">Row</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.dataframe</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.window</span> <span class="kn">import</span> <span class="n">Window</span>
+
+<span class="kn">from</span> <span class="nn">foo.utils.conn_utils</span> <span class="kn">import</span> <span class="n">SparkInit</span><span class="p">,</span> <span class="n">spark_write_to_hive</span>
+
+
+<span class="k">def</span> <span class="nf">sales_diff_mom_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">unit</span><span class="p">):</span>
+    <span class="n">diff_list</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="ow">in</span> <span class="n">diff_list</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_diff_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_mom_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">sales_rolling_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">unit</span><span class="p">):</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">window</span><span class="p">)]</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">value_sku_agg_rate_lag_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">aggregation</span><span class="p">,</span> <span class="n">lags</span><span class="p">):</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;value_sku-</span><span class="si">{</span><span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">aggregation</span><span class="p">)</span><span class="si">}</span><span class="s1">_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">aggregation</span><span class="p">)[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s1">&#39;sum&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="n">lags</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;value_sku-</span><span class="si">{</span><span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">aggregation</span><span class="p">)</span><span class="si">}</span><span class="s1">_rate_lag_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">division</span><span class="p">,</span> <span class="s1">&#39;material_code&#39;</span><span class="p">])[</span><span class="sa">f</span><span class="s1">&#39;value_sku-</span><span class="si">{</span><span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">aggregation</span><span class="p">)</span><span class="si">}</span><span class="s1">_rate&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">lag</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;value_sku-</span><span class="si">{</span><span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">aggregation</span><span class="p">)</span><span class="si">}</span><span class="s1">_rate&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">get_days_of_month</span><span class="p">(</span><span class="n">days_dict</span><span class="p">,</span> <span class="n">year_month</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">year_month</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">days_dict</span><span class="p">:</span>
+        <span class="n">year</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">year_month</span><span class="p">)[:</span><span class="mi">4</span><span class="p">])</span>
+        <span class="n">month</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">year_month</span><span class="p">)[</span><span class="mi">4</span><span class="p">:</span><span class="mi">6</span><span class="p">])</span>
+        <span class="n">days</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">days_dict</span><span class="p">[</span><span class="n">year_month</span><span class="p">]</span> <span class="o">=</span> <span class="n">days</span>
+
+    <span class="k">return</span> <span class="n">days_dict</span><span class="p">[</span><span class="n">year_month</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">time_features</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">division</span><span class="p">):</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;year_month&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)[:</span><span class="mi">4</span><span class="p">]))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;category&#39;</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;month&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;year_month&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">4</span><span class="p">:</span><span class="mi">6</span><span class="p">]))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;category&#39;</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;on_market_month&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;month_idx&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;min_month_idx&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;on_market_day_first_month&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">get_days_of_month</span><span class="p">({},</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;year_month&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;mindate&#39;</span><span class="p">])[</span><span class="mi">6</span><span class="p">:</span><span class="mi">8</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;on_market_month_</span><span class="si">{</span><span class="n">division</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;month_idx&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;min_month_idx_</span><span class="si">{</span><span class="n">division</span><span class="si">}</span><span class="s1">_sku&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">sales_rolling_mean_feature_level</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_material_code_lag_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">window</span><span class="p">)]</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">level</span><span class="p">,</span> <span class="s1">&#39;year_month&#39;</span><span class="p">])[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">df2</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_mean_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df2</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">df2</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_material_code_lag_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">window</span><span class="p">)})</span>
+
+    <span class="k">return</span> <span class="n">df2</span><span class="p">[[</span><span class="n">level</span><span class="p">,</span> <span class="s1">&#39;year_month&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_mean_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">_lag_0&#39;</span><span class="p">]]</span>
+
+
+<span class="k">def</span> <span class="nf">latest_sale_proportion_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">sales_rolling_mean_feature_level</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+    <span class="n">df2</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;latest_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_proportion_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df2</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">_lag_0&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">df2</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_lag_rolling_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_mean_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">df2</span><span class="p">[[</span><span class="n">level</span><span class="p">,</span> <span class="s1">&#39;year_month&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;latest_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_proportion_</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]],</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">level</span><span class="p">,</span> <span class="s1">&#39;year_month&#39;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">get_trend_by_lr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">df_all</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="n">current_month</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;month_idx&#39;</span><span class="p">]</span>
+    <span class="n">sku</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span>
+    <span class="n">start_month</span> <span class="o">=</span> <span class="n">current_month</span> <span class="o">-</span> <span class="n">window</span>
+    <span class="n">condition</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_all</span><span class="p">[</span><span class="s1">&#39;month_idx&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">start_month</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_all</span><span class="p">[</span><span class="s1">&#39;month_idx&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">current_month</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_all</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span> <span class="o">==</span> <span class="n">sku</span><span class="p">)</span>
+    <span class="n">train_data</span> <span class="o">=</span> <span class="n">df_all</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">condition</span><span class="p">,</span> <span class="p">[</span><span class="n">target</span><span class="p">,</span> <span class="s1">&#39;month_idx&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+
+    <span class="n">coef</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_data</span><span class="p">):</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">linear_model</span><span class="o">.</span><span class="n">LinearRegression</span><span class="p">()</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_data</span><span class="p">[</span><span class="s1">&#39;month_idx&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">train_data</span><span class="p">[</span><span class="n">target</span><span class="p">])</span>
+        <span class="n">coef</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">coef</span>
+
+
+<span class="k">def</span> <span class="nf">add_trend_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="n">df_unit</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;on_market_month&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">unit</span><span class="p">,</span> <span class="s1">&#39;month_idx&#39;</span><span class="p">])[</span><span class="n">target</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">df_unit</span> <span class="o">=</span> <span class="n">df_unit</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">target</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">df_unit</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">df_unit</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;trend_slope_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_unit</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">get_trend_by_lr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">df_unit</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">df_unit</span><span class="p">[[</span><span class="n">unit</span><span class="p">,</span> <span class="s1">&#39;month_idx&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;trend_slope_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]],</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="s1">&#39;month_idx&#39;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">feature_engineer</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">calendar</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s1">&#39;material_code&#39;</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="s1">&#39;year_month&#39;</span><span class="p">])</span>
+    <span class="n">unit_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;material_code&#39;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">unit</span> <span class="ow">in</span> <span class="n">unit_list</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">13</span><span class="p">):</span>
+            <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s1">_lag_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">division</span><span class="p">,</span> <span class="s1">&#39;material_code&#39;</span><span class="p">])[</span><span class="n">target</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">lag</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">sales_diff_mom_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;sales_lag_feature finished!&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;sales_lag_feature diff &amp; mon finished!&#39;</span><span class="p">)</span>
+
+    <span class="n">window_list</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">unit</span> <span class="ow">in</span> <span class="n">unit_list</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">window_list</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">sales_rolling_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;sales_rolling_feature finished!&#39;</span><span class="p">)</span>
+
+    <span class="n">agg_list</span> <span class="o">=</span> <span class="p">[[</span><span class="s1">&#39;year_month&#39;</span><span class="p">,</span> <span class="s1">&#39;material_code&#39;</span><span class="p">]]</span>
+    <span class="k">for</span> <span class="n">agg</span> <span class="ow">in</span> <span class="n">agg_list</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">value_sku_agg_rate_lag_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">agg</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;value_sku-aggregation_rate_feature finished!&#39;</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">time_features</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">division</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;time_features finished!&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;material_code&#39;</span><span class="p">,</span> <span class="s1">&#39;sub_brand&#39;</span><span class="p">,</span> <span class="s1">&#39;category&#39;</span><span class="p">]:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">latest_sale_proportion_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;latest_sale_proportion_feature finished!&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;material_code&#39;</span><span class="p">,</span> <span class="s1">&#39;store&#39;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">]:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">add_trend_feature</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;trend feature finished!&quot;</span><span class="p">)</span>
+
+    <span class="n">cat_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;month&#39;</span><span class="p">,</span> <span class="s1">&#39;material_code&#39;</span><span class="p">,</span> <span class="s1">&#39;brand&#39;</span><span class="p">,</span> <span class="s1">&#39;sub_brand&#39;</span><span class="p">,</span> <span class="s1">&#39;franchise&#39;</span><span class="p">,</span> <span class="s1">&#39;category&#39;</span><span class="p">,</span> <span class="s1">&#39;series&#39;</span><span class="p">,</span> <span class="s1">&#39;signature&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="s1">&#39;axe&#39;</span><span class="p">,</span> <span class="s1">&#39;sub_axe&#39;</span><span class="p">,</span> <span class="s1">&#39;class&#39;</span><span class="p">,</span> <span class="s1">&#39;function_id&#39;</span><span class="p">,</span> <span class="s1">&#39;mstatus&#39;</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="s1">&#39;sales_level&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;level3&#39;</span><span class="p">,</span> <span class="s1">&#39;level5&#39;</span><span class="p">,</span> <span class="s1">&#39;level6&#39;</span><span class="p">,</span> <span class="s1">&#39;level5_6&#39;</span><span class="p">,</span> <span class="s1">&#39;level3_5_6&#39;</span><span class="p">,</span> <span class="s1">&#39;oj1_brand&#39;</span><span class="p">,</span> <span class="s1">&#39;l2_label&#39;</span><span class="p">,</span>
+                   <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">division</span><span class="si">}</span><span class="s1">_values_level&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">division</span><span class="si">}</span><span class="s1">_level&#39;</span><span class="p">,</span> <span class="s1">&#39;seasonality_flag&#39;</span><span class="p">,</span> <span class="s1">&#39;sku_type&#39;</span><span class="p">,</span> <span class="s1">&#39;Franchise&#39;</span><span class="p">,</span> <span class="s1">&#39;citycode&#39;</span><span class="p">,</span> <span class="s1">&#39;line_city&#39;</span><span class="p">,</span> <span class="s1">&#39;prvnname_ch&#39;</span><span class="p">,</span> <span class="s1">&#39;regionname_ch&#39;</span><span class="p">,</span> <span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="s1">&#39;nation&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">cat_columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;category&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;category_feature finished!&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;target_m_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">division</span><span class="p">,</span> <span class="s1">&#39;material_code&#39;</span><span class="p">])[</span><span class="n">target</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="n">lag</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;define Y finished!&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;active_sku_filter_m_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">division</span><span class="p">,</span> <span class="s1">&#39;material_code&#39;</span><span class="p">])[</span><span class="s1">&#39;filter&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="n">lag</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;active_sku_filter_m_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;active_sku_filter_m_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;filter&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;active_sku_filter finished!&#39;</span><span class="p">)</span>
+
+    <span class="n">column_list</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="n">column_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;brand&#39;</span><span class="p">)</span>
+    <span class="n">column_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;category&#39;</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">column_list</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;brand&#39;</span><span class="p">,</span> <span class="s1">&#39;category&#39;</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">make_feature_engineer</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">calendar_b</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        groupbyKey -- category</span>
+<span class="sd">    :param rows:</span>
+<span class="sd">    :param calendar_b:</span>
+<span class="sd">    :param division:</span>
+<span class="sd">    :param target:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">row_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">row_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">asDict</span><span class="p">())</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">row_list</span><span class="p">)</span>
+
+    <span class="c1"># 广播变量的值</span>
+    <span class="n">calendar</span> <span class="o">=</span> <span class="n">calendar_b</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">feature_engineer</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">calendar</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+
+    <span class="n">dfRow</span> <span class="o">=</span> <span class="n">Row</span><span class="p">(</span><span class="o">*</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">row_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+        <span class="n">row_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dfRow</span><span class="p">(</span><span class="o">*</span><span class="n">r</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">row_list</span>
+
+
+<span class="k">def</span> <span class="nf">spark_dis_com</span><span class="p">(</span><span class="n">spark</span><span class="p">,</span> <span class="n">processor_data</span><span class="p">,</span> <span class="n">calendar_b</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">repartition</span><span class="p">,</span> <span class="n">parallel_column</span><span class="p">):</span>
+    <span class="c1">#### distributed compute</span>
+    <span class="n">feature_data_rdd</span> <span class="o">=</span> <span class="n">processor_data</span><span class="o">.</span><span class="n">rdd</span><span class="o">.</span> \
+        <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">parallel_column</span><span class="p">],</span> <span class="n">x</span><span class="p">))</span><span class="o">.</span> \
+        <span class="n">groupByKey</span><span class="p">()</span><span class="o">.</span> \
+        <span class="n">flatMap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">make_feature_engineer</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">calendar_b</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">target</span><span class="p">))</span>
+
+    <span class="c1">#### write table</span>
+    <span class="n">spark_write_to_hive</span><span class="p">(</span>
+        <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">(</span><span class="n">feature_data_rdd</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="n">repartition</span><span class="p">)),</span>
+        <span class="s1">&#39;ldlgtm_dpt.ld_feature_store_bh&#39;</span>
+    <span class="p">)</span>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="c1">############################# offline test #############################</span>
+    <span class="c1">###################### Configuring</span>
+    <span class="c1"># ...</span>
+    <span class="c1"># processor_data = pd.read_csv(&#39;...&#39;)</span>
+    <span class="c1"># calendar = pd.read_csv(&#39;...&#39;)</span>
+    <span class="c1"># feature_data = feature_engineer(processor_data, calendar, division, target)</span>
+    <span class="c1"># feature_data.to_pickle(&#39;...&#39;)</span>
+
+    <span class="c1">############################# online pre/prd #############################</span>
+    <span class="c1">###################### Init Spark</span>
+    <span class="n">spark</span> <span class="o">=</span>  <span class="n">SparkInit</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;sf-app-gtm-art-fcsting-POS-LD&#39;</span><span class="p">)</span>
+
+    <span class="c1">###################### Configuring</span>
+    <span class="o">...</span>
+
+    <span class="c1"># 加载数据</span>
+    <span class="n">processor_data</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot; ... &quot;&quot;&quot;</span><span class="p">)</span>
+    <span class="n">calendar</span> <span class="o">=</span> <span class="n">get_calendar_data</span><span class="p">(</span><span class="n">spark</span><span class="p">)</span>
+
+    <span class="c1"># 广播变量</span>
+    <span class="n">calendar_b</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">sparkContext</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">calendar</span><span class="o">.</span><span class="n">toPandas</span><span class="p">())</span>
+
+    <span class="n">spark_dis_com</span><span class="p">(</span><span class="n">spark</span><span class="p">,</span> <span class="n">processor_data</span><span class="p">,</span> <span class="n">calendar_b</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="s1">&#39;category&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;feature_data is successful&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;feature_data write table successful&quot;</span><span class="p">)</span>
+
+    <span class="n">spark</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>以上述代码举例说明：</p>
+<ul class="simple">
+<li><p>offline test 是在线下测试的代码，如函数 feature_engineer
+即是普通的基于Pandas API 的纯Python代码；</p></li>
+<li><p>online pre/prd 是线上开发和生产环境的代码，可以看到函数
+make_feature_engineer 和 spark_com_dis 的代码对于 feature_engineer
+稍加改动就变成了分布式计算的代码，主要有以下几点：</p>
+<ul>
+<li><p>利用spark.sql 读取 hive表里存储的预处理好的数据
+processor_data（pyspark.sql.dataframe.DataFrame），基于processor_data做特征工程计算；</p></li>
+<li><p>processor_data 可以根据<strong>某个字段或某几个字段</strong>做map分组分发；</p></li>
+<li><p>flatMap API
+根据make_feature_engineer函数做分布式计算，并将最后结果合并；</p></li>
+<li><p>make_feature_engineer 函数先将每个分组内的pyspark.sql.Row准成
+Python dict，再转成 list, 继而生成一个Pandas
+DataFrame,然后继续使用 feature_engineer
+函数计算，最后还原成由pyspark.sql.Row组成的list；</p></li>
+<li><p>利用spark.createDataFrame API 创建 Spark DataFrame 写表；</p></li>
+<li><p>对于其他的辅助变量 例如calendar_b，需要广播到各个节点。</p></li>
+</ul>
+</li>
+</ul>
+<p>可以看到，这里分布式计算较为灵活，可以根据<strong>某个字段或某几个字段</strong>（需要根据自己的数据需求）做map分组分发，比如这里我是根据
+category 分组分发计算（我这里的数据必须根据每个category
+训练模型），非常实用。</p>
+<p>当然有的时候我们还可以根据下面的方式分组分发，这里我是根据每个门店 store
+做分发：</p>
+<ul class="simple">
+<li><p>利用 spark.sparkContext.parallelize(store_list, 24) 生成
+rdd（使用已经存在的迭代器或者集合通过调用spark驱动程序提供的parallelize函数来创建并行集合，并行集合被创建用来在分布式集群上并行计算，这里的24表示将RDD切分多少个分区）;</p></li>
+<li><p>对于其他变量进行广播，每组RDD内的store数据直接使用 flatMap API计算；</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">map_make_post_process</span><span class="p">(</span><span class="n">model_output_b</span><span class="p">,</span> <span class="n">calendar_b</span><span class="p">,</span> <span class="n">odf_df_b</span><span class="p">,</span> <span class="n">event_df_b</span><span class="p">,</span> <span class="n">sales_df_pro_b</span><span class="p">,</span> <span class="n">sku_delisting_df_b</span><span class="p">,</span> <span class="n">forecast_list</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">M0</span><span class="p">,</span> <span class="n">M1_5_list</span><span class="p">,</span> <span class="n">store</span><span class="p">):</span>
+    <span class="c1">######## calendar &amp; odp data &amp; event data &amp; ld_month_actual_event_normal_ratio data broadcast</span>
+    <span class="n">model_output</span> <span class="o">=</span> <span class="n">model_output_b</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">calendar</span> <span class="o">=</span> <span class="n">calendar_b</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">odp_df</span> <span class="o">=</span> <span class="n">odf_df_b</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">event_df</span> <span class="o">=</span> <span class="n">event_df_b</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">sales_df_pro</span> <span class="o">=</span> <span class="n">sales_df_pro_b</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">sku_delisting_df</span> <span class="o">=</span> <span class="n">sku_delisting_df_b</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="n">output_formated</span> <span class="o">=</span> <span class="n">model_output</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">model_output</span><span class="p">[</span><span class="s1">&#39;store&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">store</span><span class="p">]</span>
+
+    <span class="o">...</span>
+
+    <span class="n">output_formatedRow</span> <span class="o">=</span> <span class="n">Row</span><span class="p">(</span><span class="o">*</span><span class="n">output_formated</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">row_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">output_formated</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+        <span class="n">row_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_formatedRow</span><span class="p">(</span><span class="o">*</span><span class="n">r</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">row_list</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="c1"># ......</span>
+    <span class="n">store_list</span> <span class="o">=</span> <span class="n">model_output</span><span class="p">[</span><span class="s1">&#39;store&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+    <span class="n">store_rdd</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">sparkContext</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">store_list</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span>
+    <span class="n">output_formated_data_row_list</span> <span class="o">=</span> <span class="n">store_rdd</span><span class="o">.</span><span class="n">flatMap</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">map_make_post_process</span><span class="p">(</span><span class="n">model_output_b</span><span class="p">,</span> <span class="n">calendar_b</span><span class="p">,</span> <span class="n">odp_df_b</span><span class="p">,</span> <span class="n">event_df_b</span><span class="p">,</span> <span class="n">sales_df_pro_b</span><span class="p">,</span> <span class="n">sku_delisting_df_b</span><span class="p">,</span> <span class="n">forecast_list</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">M0</span><span class="p">,</span> <span class="n">M1_5_list</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">output_formated_data_sdf</span> <span class="o">=</span> <span class="n">output_formated_data_row_list</span><span class="o">.</span><span class="n">toDF</span><span class="p">()</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>
+    <span class="o">......</span>
+</pre></div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="Spark%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98.html" class="btn btn-neutral float-right" title="Spark性能调优" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="Python%E5%B9%B6%E8%A1%8C%E8%AE%A1%E7%AE%97.html" class="btn btn-neutral float-left" title="Python并行计算" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2022.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

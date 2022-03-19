@@ -1,0 +1,895 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Spark性能调优 &mdash; 7125MESSI&#39;s BLOG 1.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Spark分布式计算" href="Spark%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%A1%E7%AE%97.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> 7125MESSI's BLOG
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">目录</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Python%E5%B9%B6%E8%A1%8C%E8%AE%A1%E7%AE%97.html">Python并行计算</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Spark%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%A1%E7%AE%97.html">Spark分布式计算</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Spark性能调优</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">1 Spark任务计算时间评估</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">2 调优顺序</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">3 Spark调优案例</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id7">3.1 开发习惯调优</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">资源配置优化</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rdd">尽可能复用同一个RDD，避免重复创建，并且适当持久化数据</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">尽量避免使用低性能算子</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">尽量使用高性能算子</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id20">广播大变量</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">3.2 资源参数调优</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id23">3.3 数据倾斜调优</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#key">查看Key 分布</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#broadcast-mapjoin">broadcast+map代替join</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">7125MESSI's BLOG</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Spark性能调优</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/Spark性能调优.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="spark">
+<h1>Spark性能调优<a class="headerlink" href="#spark" title="Permalink to this headline">¶</a></h1>
+<dl class="field-list simple">
+<dt class="field-odd">Date</dt>
+<dd class="field-odd"><p>2022-01-14T10:51:14+08:00</p>
+</dd>
+</dl>
+<div class="section" id="id1">
+<span id="id2"></span><h2>1 Spark任务计算时间评估<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>可以用下面三个公式来<strong>近似估计spark任务的执行时间</strong>。</p>
+<p>:math:` 任务执行时间 ≈ frac{任务计算总时间 + shuffle总时间 + GC垃圾回收总时间} {任务有效并行度}`</p>
+<p>:math:` 任务有效并行度 ≈ frac{min(任务并行度， partition分区数量)} {数据倾斜度times 计算倾斜度} `</p>
+<p>:math:` 任务并行度 ≈ executor数量 times 每个executor的core数量 `</p>
+<p>可以用下面两个公式来说明<strong>spark在executor上的内存分配</strong>。</p>
+<p>:math:` executor申请的内存 ≈ 堆内内存(堆内内存由多个core共享) + 堆外内存 `</p>
+<p>:math:` 堆内内存 ≈ storage内存+execution内存+other内存 `</p>
+<p>以下是对上述公式中涉及到的一些概念的初步解读。</p>
+<ul class="simple">
+<li><p>任务计算总时间：假设由一台无限内存的同等CPU配置的单核机器执行该任务，所需要的运行时间。通过缓存避免重复计算，通过mapPartitions代替map以减少诸如连接数据库，预处理广播变量等重复过程，都是减少任务计算总时间的例子。</p></li>
+<li><p>shuffle总时间：任务因为reduceByKey，join，sortBy等shuffle类算子会触发shuffle操作产生的磁盘读写和网络传输的总时间。shuffle操作的目的是将分布在集群中多个节点上的同一个key的数据，拉取到同一个节点上，以便让一个节点对同一个key的所有数据进行统一处理。
+shuffle过程首先是前一个stage的一个shuffle
+write即写磁盘过程，中间是一个网络传输过程，然后是后一个stage的一个shuffle
+read即读磁盘过程。shuffle过程既包括磁盘读写，又包括网络传输，非常耗时。因此如有可能，应当避免使用shuffle类算子。例如用map+broadcast的方式代替join过程。退而求其次，也可以在shuffle之前对相同key的数据进行归并，减少shuffle读写和传输的数据量。此外，还可以应用一些较为高效的shuffle算子来代替低效的shuffle算子。例如用reduceByKey/aggregateByKey来代替groupByKey。最后，shuffle在进行网络传输的过程中会通过netty使用JVM堆外内存，spark任务中大规模数据的shuffle可能会导致堆外内存不足，导致任务挂掉，这时候需要在配置文件中调大堆外内存。</p></li>
+<li><p>GC垃圾回收总时间：当JVM中execution内存不足时，会启动GC垃圾回收过程。执行GC过程时候，用户线程会终止等待。因此如果execution内存不够充分，会触发较多的GC过程，消耗较多的时间。在spark2.0之后excution内存和storage内存是统一分配的，不必调整excution内存占比，可以提高executor-memory来降低这种可能。或者减少executor-cores来降低这种可能(这会导致任务并行度的降低)。</p></li>
+<li><p>任务有效并行度：任务实际上平均被多少个core执行。它首先取决于可用的core数量。当partition分区数量少于可用的core数量时，只会有partition分区数量的core执行任务，因此一般设置分区数是可用core数量的2倍以上20倍以下。此外任务有效并行度严重受到数据倾斜和计算倾斜的影响。有时候我们会看到99%的partition上的数据几分钟就执行完成了，但是有1%的partition上的数据却要执行几个小时。这时候一般是发生了数据倾斜或者计算倾斜。这个时候，我们说，任务实际上有效的并行度会很低，因为在后面的这几个小时的绝大部分时间，只有很少的几个core在执行任务。</p></li>
+<li><p>任务并行度：任务可用core的数量。它等于申请到的executor数量和每个executor的core数量的乘积。可以在spark-submit时候用num-executor和executor-cores来控制并行度。此外，也可以开启spark.dynamicAllocation.enabled根据任务耗时动态增减executor数量。虽然提高executor-cores也能够提高并行度，但是当计算需要占用较大的存储时，不宜设置较高的executor-cores数量，否则可能会导致executor内存不足发生内存溢出OOM。</p></li>
+<li><p>partition分区数量：分区数量越大，单个分区的数据量越小，任务在不同的core上的数量分配会越均匀，有助于提升任务有效并行度。但partition数量过大，会导致更多的数据加载时间，一般设置分区数是可用core数量的2倍以上20倍以下。可以在spark-submit中用spark.default.parallelism来控制RDD的默认分区数量，可以用spark.sql.shuffle.partitions来控制SparkSQL中给shuffle过程的分区数量。</p></li>
+<li><p>数据倾斜度：数据倾斜指的是数据量在不同的partition上分配不均匀。一般来说，shuffle算子容易产生数据倾斜现象，某个key上聚合的数据量可能会百万千万之多，而大部分key聚合的数据量却只有几十几百个。一个partition上过大的数据量不仅需要耗费大量的计算时间，而且容易出现OOM。对于数据倾斜，一种简单的缓解方案是增大partition分区数量，但不能从根本上解决问题。一种较好的解决方案是利用随机数构造数量为原始key数量1000倍的中间key。大概步骤如下，利用1到1000的随机数和当前key组合成中间key，中间key的数据倾斜程度只有原来的1/1000,
+先对中间key执行一次shuffle操作，得到一个数据量少得多的中间结果，然后再对我们关心的原始key进行shuffle，得到一个最终结果。</p></li>
+<li><p>计算倾斜度：计算倾斜指的是不同partition上的数据量相差不大，但是计算耗时相差巨大。考虑这样一个例子，我们的RDD的每一行是一个列表，我们要计算每一行中这个列表中的数两两乘积之和，这个计算的复杂度是和列表长度的平方成正比的，因此如果有一个列表的长度是其它列表平均长度的10倍，那么计算这一行的时间将会是其它列表的100倍，从而产生计算倾斜。计算倾斜和数据倾斜的表现非常相似，我们会看到99%的partition上的数据几分钟就执行完成了，但是有1%的partition上的数据却要执行几个小时。计算倾斜和shuffle无关，在map端就可以发生。计算倾斜出现后，一般可以通过舍去极端数据或者改变计算方法优化性能。</p></li>
+<li><p>堆内内存：on-heap memory,
+即Java虚拟机直接管理的存储，由JVM负责垃圾回收GC。由多个core共享，core越多，每个core实际能使用的内存越少。core设置得过大容易导致OOM，并使得GC时间增加。</p></li>
+<li><p>堆外内存：off-heap memory, 不受JVM管理的内存, 可以精确控制申请和释放,
+没有GC问题。一般shuffle过程在进行网络传输的过程中会通过netty使用到堆外内存。</p></li>
+</ul>
+</div>
+<div class="section" id="id3">
+<span id="id4"></span><h2>2 调优顺序<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>如果程序执行太慢，调优的顺序一般如下：</p>
+<p><strong>1，首先调整任务并行度，并调整partition分区。</strong></p>
+<p>2，尝试定位可能的重复计算，并优化之。</p>
+<p><strong>3，尝试定位数据倾斜问题或者计算倾斜问题并优化之。</strong></p>
+<p>4，如果shuffle过程提示堆外内存不足，考虑<strong>调高堆外内存。</strong></p>
+<p>5，如果发生OOM或者GC耗时过长，考虑<strong>提高executor-memory或降低executor-core。</strong></p>
+</div>
+<div class="section" id="id5">
+<span id="id6"></span><h2>3 Spark调优案例<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<span id="id8"></span><h3>3.1 开发习惯调优<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id9">
+<h4>资源配置优化<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#提交python写的任务</span>
+spark-submit --master yarn <span class="se">\</span>
+--deploy-mode cluster <span class="se">\</span>
+--executor-memory 12G <span class="se">\</span>
+--driver-memory 12G <span class="se">\</span>
+--num-executors <span class="m">100</span> <span class="se">\</span>
+--executor-cores <span class="m">8</span> <span class="se">\</span>
+--conf spark.yarn.maxAppAttempts<span class="o">=</span><span class="m">2</span> <span class="se">\</span>
+--conf spark.task.maxFailures<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--conf spark.stage.maxConsecutiveAttempts<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--conf spark.yarn.appMasterEnv.PYSPARK_PYTHON<span class="o">=</span>./anaconda3.zip/anaconda3/bin/python <span class="c1">#指定excutors的Python环境</span>
+--conf spark.yarn.appMasterEnv.PYSPARK_DRIVER_PYTHON <span class="o">=</span> ./anaconda3.zip/anaconda3/bin/python  <span class="c1">#cluster模式时候设置</span>
+--archives viewfs:///user/hadoop-xxx/yyy/anaconda3.zip <span class="c1">#上传到hdfs的Python环境</span>
+--files  data.csv,profile.txt
+--py-files  pkg.py,tqdm.py
+pyspark_demo.py
+</pre></div>
+</div>
+<p>优化后：</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#提交python写的任务</span>
+spark-submit --master yarn <span class="se">\</span>
+--deploy-mode cluster <span class="se">\</span>
+--executor-memory 12G <span class="se">\</span>
+--driver-memory 12G <span class="se">\</span>
+--num-executors <span class="m">100</span> <span class="se">\</span>
+--executor-cores <span class="m">2</span> <span class="se">\</span>
+--conf spark.yarn.maxAppAttempts<span class="o">=</span><span class="m">2</span> <span class="se">\</span>
+--conf spark.default.parallelism<span class="o">=</span><span class="m">1600</span> <span class="se">\</span>
+--conf spark.sql.shuffle.partitions<span class="o">=</span><span class="m">1600</span> <span class="se">\</span>
+--conf spark.memory.offHeap.enabled<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+--conf spark.memory.offHeap.size<span class="o">=</span>2g<span class="se">\</span>
+--conf spark.task.maxFailures<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--conf spark.stage.maxConsecutiveAttempts<span class="o">=</span><span class="m">10</span> <span class="se">\</span>
+--conf spark.yarn.appMasterEnv.PYSPARK_PYTHON<span class="o">=</span>./anaconda3.zip/anaconda3/bin/python <span class="c1">#指定excutors的Python环境</span>
+--conf spark.yarn.appMasterEnv.PYSPARK_DRIVER_PYTHON <span class="o">=</span> ./anaconda3.zip/anaconda3/bin/python  <span class="c1">#cluster模式时候设置</span>
+--archives viewfs:///user/hadoop-xxx/yyy/anaconda3.zip <span class="c1">#上传到hdfs的Python环境</span>
+--files  data.csv,profile.txt
+--py-files  pkg.py,tqdm.py
+pyspark_demo.py
+</pre></div>
+</div>
+<p>这里主要<strong>减小了
+executor-cores数量，一般设置为1~4，过大的数量可能会造成每个core计算和存储资源不足产生OOM，也会增加GC时间。此外也将默认分区数调到了1600，并设置了2G的堆外内存。</strong></p>
+</div>
+<div class="section" id="rdd">
+<h4>尽可能复用同一个RDD，避免重复创建，并且适当持久化数据<a class="headerlink" href="#rdd" title="Permalink to this headline">¶</a></h4>
+<p>这种开发习惯是需要我们对于即将要开发的应用逻辑有比较深刻的思考，并且可以通过code
+review来发现的，讲白了就是要记得我们创建过啥数据集，可以复用的尽量<strong>广播（broadcast）</strong>下，能很好提升性能。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 最低级写法，相同数据集重复创建。</span>
+<span class="n">rdd1</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">textFile</span><span class="p">(</span><span class="s2">&quot;./test/data/hello_samshare.txt&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="c1"># 这里的 4 指的是分区数量</span>
+<span class="n">rdd2</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">textFile</span><span class="p">(</span><span class="s2">&quot;./test/data/hello_samshare.txt&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="c1"># 这里的 4 指的是分区数量</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd2</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># 稍微进阶一些，复用相同数据集，但因中间结果没有缓存，数据会重复计算</span>
+<span class="n">rdd1</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">textFile</span><span class="p">(</span><span class="s2">&quot;./test/data/hello_samshare.txt&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="c1"># 这里的 4 指的是分区数量</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># 相对比较高效，使用缓存来持久化数据</span>
+<span class="n">rdd</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>  <span class="c1"># 或者persist()</span>
+<span class="n">rdd_map</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">rdd_reduce</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_map</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_reduce</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>下面我们就来对比一下使用缓存能给我们的Spark程序带来多大的效率提升吧，我们先构造一个程序运行时长测量器。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+<span class="c1"># 统计程序运行时间</span>
+<span class="k">def</span> <span class="nf">time_me</span><span class="p">(</span><span class="n">info</span><span class="o">=</span><span class="s2">&quot;used&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_time_me</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">_wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fn</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">),</span> <span class="s2">&quot;second&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_wrapper</span>
+    <span class="k">return</span> <span class="n">_time_me</span>
+</pre></div>
+</div>
+<p>下面我们运行下面的代码，看下使用了cache带来的效率提升：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@time_me</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="n">types</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">types</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;使用持久化缓存&quot;</span><span class="p">)</span>
+        <span class="n">rdd</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10000000</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">rdd1</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>  <span class="c1"># 或者 persist(StorageLevel.MEMORY_AND_DISK_SER)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+        <span class="n">rdd2</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">rdd3</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">rdd4</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">rdd5</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">rdd5</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;不使用持久化缓存&quot;</span><span class="p">)</span>
+        <span class="n">rdd</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10000000</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">rdd1</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+        <span class="n">rdd2</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">rdd3</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">rdd4</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">rdd5</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">rdd5</span><span class="p">)</span>
+
+
+<span class="n">test</span><span class="p">()</span>   <span class="c1"># 不使用持久化缓存</span>
+
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">test</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># 使用持久化缓存</span>
+
+<span class="c1"># output:</span>
+
+<span class="c1"># 不使用持久化缓存</span>
+<span class="c1"># [4, 9, 16, 25, 36, 49, 64, 81, 100, 121]</span>
+<span class="c1"># 333333383333334999999</span>
+<span class="c1"># test used 26.36529278755188 second</span>
+
+
+<span class="c1"># 使用持久化缓存</span>
+<span class="c1"># [4, 9, 16, 25, 36, 49, 64, 81, 100, 121]</span>
+<span class="c1"># 333333383333334999999</span>
+<span class="c1"># test used 17.49532413482666 second</span>
+</pre></div>
+</div>
+<p>同时我们打开YARN日志来看看：<a class="reference external" href="http://localhost:4040/job">http://localhost:4040/job</a><strong>*</strong>*s/<a href="#id10"><span class="problematic" id="id11">*</span></a>*
+<img alt="image1" src="https://cdn.nlark.com/yuque/0/2021/png/200056/1624314714071-681d635d-cd76-4a32-8d83-fc31e178f041.png" /></p>
+<p>因为我们的代码是需要重复调用RDD1的，当没有对RDD1进行持久化的时候，<strong>每次当它被action算子消费了之后，就释放了，等下一个算子计算的时候要用，就从头开始计算一下RDD1</strong>。代码中需要重复调用RDD1
+五次，所以没有缓存的话，差不多每次都要6秒，总共需要<strong>耗时26秒</strong>左右，但是，<strong>做了缓存</strong>，每次就只需要3s不到，总共需要<strong>耗时17秒</strong>左右。</p>
+<p>另外，这里需要提及一下一个知识点，那就是持久化的级别，<strong>一般cache的话就是放入内存中，就没有什么好说的，需要讲一下的就是*</strong>*另外一个**
+<strong>persist()*</strong>*，它的持久化级别是可以被我们所配置的：<a href="#id12"><span class="problematic" id="id13">*</span></a>*</p>
+<p>持久化级别</p>
+<p>含义解释</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>MEMORY_ONLY</strong></p></td>
+<td><p><strong>将数据保存在内存
+中。如果内存不够存放所有的数据，
+则数据可能就不会进行持久化。使用
+cache()方法时，实际就是使用的这
+种持久化策略，性能也是最高的。</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>MEMORY_AND_DISK</strong></p></td>
+<td><p><strong>优先尝试将数据保存
+在内存中，如果内存不够存放所有的
+数据，会将数据写入磁盘文件中。</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>MEMORY_ONLY_SER</strong></p></td>
+<td><p><strong>基本含义同MEMORY_ONL
+Y。唯一的区别是，会将RDD中的数据
+进行序列化，RDD的每个partition会
+被序列化成一个字节数组。这种方式
+更加节省内存，从而可以避免持久化
+的数据占用过多内存导致频繁GC。</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>MEMORY_AND_DISK_SER</strong></p></td>
+<td><ul class="simple">
+<li></li>
+</ul>
+<p><em>基本含义同MEMORY_AND_DISK。唯一
+的区别是会先序列化，节约内存。*</em></p>
+</td>
+</tr>
+<tr class="row-even"><td><p>DISK_ONLY</p></td>
+<td><p>使用未
+序列化的Java对象格式，将数据全部
+写入磁盘文件中。一般不推荐使用。</p></td>
+</tr>
+<tr class="row-odd"><td><p>MEMORY_ONLY_2,
+MEMORY_AND_DISK_2, 等等.</p></td>
+<td><p>对于上述任意一种持久化策
+略，如果加上后缀_2，代表的是将每
+个持久化的数据，都复制一份副本，
+并将副本保存到其他节点上。这种基
+于副本的持久化机制主要用于进行容
+错。假如某个节点挂掉，节点的内存
+或磁盘中的持久化数据丢失了，那么
+后续对RDD计算时还可以使用该数据
+在其他节点上的副本。如果没有副本
+的话，就只能将这些数据从源头处重
+新计算一遍了。一般也不推荐使用。</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id14">
+<h4>尽量避免使用低性能算子<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h4>
+<p>shuffle类算子算是低性能算子的一种代表，所谓的shuffle类算子，指的是会产生shuffle过程的操作，就是需要<strong>把各个节点上的相同key写入到本地磁盘文件中，然后其他的节点通过网络传输拉取自己需要的key，把相同key拉到同一个节点上进行聚合计算，这种操作必然就是有大量的数据网络传输与磁盘读写操作，性能往往不是很好的。</strong></p>
+<p>那么，Spark中有哪些算子会产生shuffle过程呢？</p>
+<p>操作类别</p>
+<p>shuffle类算子</p>
+<p>备注</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 42%" />
+<col style="width: 42%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"></th>
+<th class="head"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>分区操作</p></td>
+<td><ul class="simple">
+<li></li>
+</ul>
+<p><em>repartition()、repartitio
+nAndSortWithinPartitions()
+、coalesce(shuffle=true)*</em></p>
+</td>
+<td><p>重分区操作
+一般都会shuffle，因为需要
+对所有的分区数据进行打乱。</p></td>
+</tr>
+<tr class="row-odd"><td><p>聚合操作</p></td>
+<td><p>reduceByKey、*
+<em>groupByKey*</em>、sortByKey</p></td>
+<td><p>需要对相同key进行操作，
+所以需要拉到同一个节点上。</p></td>
+</tr>
+<tr class="row-even"><td><p>关联操作</p></td>
+<td><p><strong>join类操作</strong></p></td>
+<td><p><strong>需要
+把相同key的数据shuffle到同
+一个节点然后进行笛卡尔积</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>去重操作</p></td>
+<td><p><strong>distinct</strong>等</p></td>
+<td><p>需要
+对相同key进行操作，所以需
+要shuffle到同一个节点上。</p></td>
+</tr>
+<tr class="row-even"><td><p>排序操作</p></td>
+<td><p>sortByKey等</p></td>
+<td><p>需要
+对相同key进行操作，所以需
+要shuffle到同一个节点上。</p></td>
+</tr>
+</tbody>
+</table>
+<p>这里进一步介绍一个替代join的方案，因为join其实在业务中还是蛮常见的。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 原则2：尽量避免使用低性能算子</span>
+<span class="n">rdd1</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">211</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">212</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A2&#39;</span><span class="p">,</span> <span class="mi">22</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A4&#39;</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A5&#39;</span><span class="p">,</span> <span class="mi">25</span><span class="p">)])</span>
+<span class="n">rdd2</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A2&#39;</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A3&#39;</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A4&#39;</span><span class="p">,</span> <span class="mi">14</span><span class="p">)])</span>
+
+<span class="c1"># 低效的写法，也是传统的写法，直接join</span>
+<span class="n">rdd_join</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rdd2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_join</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+<span class="c1"># [(&#39;A4&#39;, (24, 14)), (&#39;A2&#39;, (22, 12)), (&#39;A1&#39;, (211, 11)), (&#39;A1&#39;, (212, 11))]</span>
+
+<span class="n">rdd_left_join</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">leftOuterJoin</span><span class="p">(</span><span class="n">rdd2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_left_join</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+<span class="c1"># [(&#39;A4&#39;, (24, 14)), (&#39;A2&#39;, (22, 12)), (&#39;A5&#39;, (25, None)), (&#39;A1&#39;, (211, 11)), (&#39;A1&#39;, (212, 11))]</span>
+
+<span class="n">rdd_full_join</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">fullOuterJoin</span><span class="p">(</span><span class="n">rdd2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_full_join</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+<span class="c1"># [(&#39;A4&#39;, (24, 14)), (&#39;A3&#39;, (None, 13)), (&#39;A2&#39;, (22, 12)), (&#39;A5&#39;, (25, None)), (&#39;A1&#39;, (211, 11)), (&#39;A1&#39;, (212, 11))]</span>
+
+<span class="c1"># 高效的写法，使用  广播+map 来实现相同效果</span>
+<span class="c1"># tips1: 这里需要注意的是，用来broadcast的RDD不可以太大，最好不要超过1G</span>
+<span class="c1"># tips2: 这里需要注意的是，用来broadcast的RDD不可以有重复的key的</span>
+<span class="n">rdd1</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A2&#39;</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A3&#39;</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A4&#39;</span><span class="p">,</span> <span class="mi">14</span><span class="p">)])</span>
+<span class="n">rdd2</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">211</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">212</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A2&#39;</span><span class="p">,</span> <span class="mi">22</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A4&#39;</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A5&#39;</span><span class="p">,</span> <span class="mi">25</span><span class="p">)])</span>
+
+<span class="c1"># step1： 先将小表进行广播，也就是collect到driver端，然后广播到每个Executor中去。</span>
+<span class="n">rdd_small_bc</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+
+<span class="c1"># step2：从Executor中获取存入字典便于后续map操作</span>
+<span class="n">rdd_small_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">rdd_small_bc</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<span class="c1"># step3：定义join方法</span>
+<span class="k">def</span> <span class="nf">broadcast_join</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">rdd_small_dict</span><span class="p">,</span> <span class="n">join_type</span><span class="p">):</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">small_table_v</span> <span class="o">=</span> <span class="n">rdd_small_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">rdd_small_dict</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">join_type</span> <span class="o">==</span> <span class="s1">&#39;join&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">small_table_v</span><span class="p">))</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">rdd_small_dict</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">elif</span> <span class="n">join_type</span> <span class="o">==</span> <span class="s1">&#39;left_join&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">small_table_v</span> <span class="k">if</span> <span class="n">small_table_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;not support join type!&quot;</span><span class="p">)</span>
+
+<span class="c1"># step4：使用 map 实现 两个表join的功能</span>
+<span class="n">rdd_join</span> <span class="o">=</span> <span class="n">rdd2</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">line</span><span class="p">:</span> <span class="n">broadcast_join</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">rdd_small_dict</span><span class="p">,</span> <span class="s2">&quot;join&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">line</span><span class="p">:</span> <span class="n">line</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+
+<span class="n">rdd_left_join</span> <span class="o">=</span> <span class="n">rdd2</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">line</span><span class="p">:</span> <span class="n">broadcast_join</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">rdd_small_dict</span><span class="p">,</span> <span class="s2">&quot;left_join&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">line</span><span class="p">:</span> <span class="n">line</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_join</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_left_join</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+<span class="c1"># [(&#39;A1&#39;, (211, 11)), (&#39;A1&#39;, (212, 11)), (&#39;A2&#39;, (22, 12)), (&#39;A4&#39;, (24, 14))]</span>
+<span class="c1"># [(&#39;A1&#39;, (211, 11)), (&#39;A1&#39;, (212, 11)), (&#39;A2&#39;, (22, 12)), (&#39;A4&#39;, (24, 14)), (&#39;A5&#39;, (25, None))]</span>
+</pre></div>
+</div>
+<p>上面的RDD join被改写为
+<strong>broadcast+map</strong>的PySpark版本实现，不过里面有两个点需要注意：</p>
+<ul class="simple">
+<li><p>tips1: 用来broadcast的RDD不可以太大，最好<strong>不要超过1G</strong></p></li>
+<li><p>tips2: 用来broadcast的RDD<strong>不可以有重复的key</strong>的</p></li>
+</ul>
+</div>
+<div class="section" id="id15">
+<h4>尽量使用高性能算子<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h4>
+<p>上一节讲到了低效算法，自然地就会有一些高效的算子。</p>
+<p>原算子</p>
+<p>高效算子（替换算子）</p>
+<p>说明</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"></th>
+<th class="head"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>map</p></td>
+<td><p>mapPartitions</p></td>
+<td><p>直接map的话，每次只会
+处理一条数据，而<a href="#id16"><span class="problematic" id="id17">**</span></a>m
+apPartitions则是每次处
+理一个分区的数据，在某
+些场景下相对比较高效。
+<a href="#id18"><span class="problematic" id="id19">**</span></a>（分区数据量不大的
+情况下使用，如果有数据
+倾斜的话容易发生OOM）</p></td>
+</tr>
+<tr class="row-odd"><td><p>groupByKey</p></td>
+<td><p><strong>reduce
+ByKey</strong>/aggregateByKey</p></td>
+<td><p>这类算子会
+在<strong>原节点先map-side
+预聚合，相对高效些。</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>foreach</p></td>
+<td><p>foreachPartitions</p></td>
+<td><p>同第一条记录一样。</p></td>
+</tr>
+<tr class="row-odd"><td><p>filter</p></td>
+<td><p><strong>filter+coalesce</strong></p></td>
+<td><p>当我们对
+数据进行filter之后，有
+很多partition的数据会
+剧减，然后直接进行下一
+步操作的话，可能<strong>就
+partition数量很多但处
+理的数据又很少，task数
+量没有减少，反而整体速
+度很慢；但如果执行了co
+alesce算子，就会减少一
+些partition数量，把数
+据都相对压缩到一起，用
+更少的task处理完全部数
+据，一定场景下还是可以
+达到整体性能的提升。</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>repartition+sort</p></td>
+<td><p>repartitionA
+ndSortWithinPartitions</p></td>
+<td><p>直接用就是了。</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id20">
+<h4>广播大变量<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h4>
+<p><strong>如果我们有一个数据集很大，并且在后续的算子执行中会被反复调用，那么就建议直接把它广播（broadcast）一下。当变量被广播后，会保证每个executor的内存中只会保留一份副本，同个executor内的task都可以共享这个副本数据。</strong>如果没有广播，常规过程就是把<strong>大变量进行网络传输到每一个相关task中去，这样子做，一来频繁的网络数据传输，效率极其低下；二来executor下的task不断存储同一份大数据，很有可能就造成了内存溢出或者频繁GC，效率也是极其低下的。</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 原则4：广播大变量</span>
+<span class="n">rdd1</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s1">&#39;A1&#39;</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A2&#39;</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A3&#39;</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;A4&#39;</span><span class="p">,</span> <span class="mi">14</span><span class="p">)])</span>
+<span class="n">rdd1_broadcast</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd1</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd1_broadcast</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<span class="c1"># [(&#39;A1&#39;, 11), (&#39;A2&#39;, 12), (&#39;A3&#39;, 13), (&#39;A4&#39;, 14)]</span>
+<span class="c1"># [(&#39;A1&#39;, 11), (&#39;A2&#39;, 12), (&#39;A3&#39;, 13), (&#39;A4&#39;, 14)]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="id21">
+<span id="id22"></span><h3>3.2 资源参数调优<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h3>
+<p>如果要进行资源调优，我们就必须先知道Spark运行的机制与流程。</p>
+<div class="figure align-default">
+<img alt="" src="https://cdn.nlark.com/yuque/0/2021/png/200056/1637546512933-499c0f4b-065b-439f-a02b-06ea7d5d1688.png" />
+</div>
+<p>下面我们就来讲解一些常用的Spark资源配置的参数吧，了解其参数原理便于我们依据实际的数据情况进行配置。</p>
+<p><strong>1）num-executors</strong></p>
+<p>指的是执行器的数量，数量的多少代表了并行的stage数量（假如executor是单核的话），但也并不是越多越快，受你集群资源的限制，所以一般设置50-100左右吧。</p>
+<p><strong>2）executor-memory</strong></p>
+<p>这里指的是每一个执行器的内存大小，内存越大当然对于程序运行是很好的了，但是也不是无节制地大下去，同样受我们集群资源的限制。假设我们集群资源为500core，一般1core配置4G内存，所以集群最大的内存资源只有2000G左右。num-executors
+x executor-memory
+是不能超过2000G的，但是也不要太接近这个值，不然的话集群其他同事就没法正常跑数据了，一般我们设置4G-8G。</p>
+<p><strong>3）executor-cores</strong></p>
+<p>这里设置的是executor的CPU
+core数量，决定了executor进程并行处理task的能力。</p>
+<p><strong>4）driver-memory</strong></p>
+<p>设置driver的内存，一般设置2G就好了。但如果想要做一些Python的DataFrame操作可以适当地把这个值设大一些。</p>
+<p><strong>5）driver-cores</strong></p>
+<p>与executor-cores类似的功能。</p>
+<p><strong>6）spark.default.parallelism</strong></p>
+<p>设置每个stage的task数量。一般Spark任务我们设置task数量在500-1000左右比较合适，如果不去设置的话，Spark会根据底层HDFS的block数量来自行设置task数量。有的时候会设置得偏少，这样子程序就会跑得很慢，即便你设置了很多的executor，但也没有用。</p>
+<p>下面说一个基本的参数设置的shell脚本，一般我们都是通过一个shell脚本来设置资源参数配置，接着就去调用我们的主函数。</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="nv">basePath</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span> <span class="s2">&quot;</span><span class="k">$(</span>dirname <span class="k">)</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span> <span class="s2">&quot;</span><span class="k">$(</span>dirname <span class="s2">&quot;</span><span class="nv">$0</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">: pwd)&quot;</span><span class="k">)</span><span class="s2">&quot;: pwd)</span>
+
+<span class="s2">spark-submit \</span>
+<span class="s2">    --master yarn \</span>
+<span class="s2">    --queue samshare \</span>
+<span class="s2">    --deploy-mode client \</span>
+<span class="s2">    --num-executors 100 \</span>
+<span class="s2">    --executor-memory 4G \</span>
+<span class="s2">    --executor-cores 4 \</span>
+<span class="s2">    --driver-memory 2G \</span>
+<span class="s2">    --driver-cores 2 \</span>
+<span class="s2">    --conf spark.default.parallelism=1000 \</span>
+<span class="s2">    --conf spark.yarn.executor.memoryOverhead=8G \</span>
+<span class="s2">    --conf spark.sql.shuffle.partitions=1000 \</span>
+<span class="s2">    --conf spark.network.timeout=1200 \</span>
+<span class="s2">    --conf spark.python.worker.memory=64m \</span>
+<span class="s2">    --conf spark.sql.catalogImplementation=hive \</span>
+<span class="s2">    --conf spark.sql.crossJoin.enabled=True \</span>
+<span class="s2">    --conf spark.dynamicAllocation.enabled=True \</span>
+<span class="s2">    --conf spark.shuffle.service.enabled=True \</span>
+<span class="s2">    --conf spark.scheduler.listenerbus.eventqueue.size=100000 \</span>
+<span class="s2">    --conf spark.pyspark.driver.python=python3 \</span>
+<span class="s2">    --conf spark.pyspark.python=python3 \</span>
+<span class="s2">    --conf spark.yarn.appMasterEnv.PYSPARK_PYTHON=python3 \</span>
+<span class="s2">    --conf spark.sql.pivotMaxValues=500000 \</span>
+<span class="s2">    --conf spark.hadoop.hive.exec.dynamic.partition=True \</span>
+<span class="s2">    --conf spark.hadoop.hive.exec.dynamic.partition.mode=nonstrict \</span>
+<span class="s2">    --conf spark.hadoop.hive.exec.max.dynamic.partitions.pernode=100000 \</span>
+<span class="s2">    --conf spark.hadoop.hive.exec.max.dynamic.partitions=100000 \</span>
+<span class="s2">    --conf spark.hadoop.hive.exec.max.created.files=100000 \</span>
+<span class="s2">    </span><span class="si">${</span><span class="nv">bashPath</span><span class="si">}</span><span class="s2">/project_name/main.py </span><span class="nv">$v_var1</span><span class="s2"> </span><span class="nv">$v_var2</span><span class="s2"></span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id23">
+<span id="id24"></span><h3>3.3 数据倾斜调优<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h3>
+<p>相信我们对于数据倾斜并不陌生了，很多时间数据跑不出来有很大的概率就是出现了数据倾斜，在Spark开发中无法避免的也会遇到这类问题，而这不是一个崭新的问题，成熟的解决方案也是有蛮多的，今天来简单介绍一些比较常用并且有效的方案。</p>
+<p>首先我们要知道，在Spark中比较容易出现倾斜的操作，主要集中在distinct、groupByKey、reduceByKey、aggregateByKey、join、repartition等，可以优先看这些操作的前后代码。而为什么使用了这些操作就容易导致数据倾斜呢？大多数情况就是进行操作的key分布不均，然后使得大量的数据集中在同一个处理节点上，从而发生了数据倾斜。</p>
+<div class="section" id="key">
+<h4>查看Key 分布<a class="headerlink" href="#key" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 针对Spark SQL</span>
+<span class="n">hc</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">&quot;select key, count(0) nums from table_name group by key&quot;</span><span class="p">)</span>
+
+<span class="c1"># 针对RDD</span>
+<span class="n">RDD</span><span class="o">.</span><span class="n">countByKey</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="plan-a-key">
+<h5>Plan A: 过滤掉导致倾斜的key<a class="headerlink" href="#plan-a-key" title="Permalink to this headline">¶</a></h5>
+<p>这个方案并不是所有场景都可以使用的，需要结合业务逻辑来分析这个key到底还需要不需要，大多数情况可能就是一些<strong>异常值或者空串</strong>，这种就直接进行过滤就好了。</p>
+</div>
+<div class="section" id="plan-b">
+<h5>Plan B: 提前处理聚合<a class="headerlink" href="#plan-b" title="Permalink to this headline">¶</a></h5>
+<p>如果有些Spark应用场景需要频繁聚合数据，而数据key又少的，那么我们可以把这些存量数据先用hive算好（每天算一次），然后落到中间表，后续Spark应用直接用聚合好的表+新的数据进行二度聚合，效率会有很高的提升。</p>
+</div>
+<div class="section" id="plan-c-shuffle">
+<h5>Plan C: 调高shuffle并行度<a class="headerlink" href="#plan-c-shuffle" title="Permalink to this headline">¶</a></h5>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 针对Spark SQL</span>
+<span class="o">--</span><span class="n">conf</span> <span class="n">spark</span><span class="o">.</span><span class="n">sql</span><span class="o">.</span><span class="n">shuffle</span><span class="o">.</span><span class="n">partitions</span><span class="o">=</span><span class="mi">1000</span>  <span class="c1"># 在配置信息中设置参数</span>
+<span class="c1"># 针对RDD</span>
+<span class="n">rdd</span><span class="o">.</span><span class="n">reduceByKey</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span> <span class="c1"># 默认是200</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="plan-d">
+<h5>Plan D: 分配随机数再聚合<a class="headerlink" href="#plan-d" title="Permalink to this headline">¶</a></h5>
+<p><strong>大概的思路就是对一些大量出现的key，人工打散，从而可以利用多个task来增加任务并行度，以达到效率提升的目的，下面是代码demo，分别从*</strong>*RDD
+和 SparkSQL来实现。<a href="#id25"><span class="problematic" id="id26">*</span></a>*</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Way1: PySpark RDD实现</span>
+<span class="kn">import</span> <span class="nn">pyspark</span>
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="kn">import</span> <span class="n">SparkContext</span><span class="p">,</span> <span class="n">SparkConf</span><span class="p">,</span> <span class="n">HiveContext</span>
+<span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">randint</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="c1"># SparkSQL的许多功能封装在SparkSession的方法接口中, SparkContext则不行的。</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="kn">import</span> <span class="n">SparkSession</span>
+<span class="n">spark</span> <span class="o">=</span> <span class="n">SparkSession</span><span class="o">.</span><span class="n">builder</span> \
+    <span class="o">.</span><span class="n">appName</span><span class="p">(</span><span class="s2">&quot;sam_SamShare&quot;</span><span class="p">)</span> \
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;master&quot;</span><span class="p">,</span> <span class="s2">&quot;local[4]&quot;</span><span class="p">)</span> \
+    <span class="o">.</span><span class="n">enableHiveSupport</span><span class="p">()</span> \
+    <span class="o">.</span><span class="n">getOrCreate</span><span class="p">()</span>
+
+<span class="n">conf</span> <span class="o">=</span> <span class="n">SparkConf</span><span class="p">()</span><span class="o">.</span><span class="n">setAppName</span><span class="p">(</span><span class="s2">&quot;test_SamShare&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setMaster</span><span class="p">(</span><span class="s2">&quot;local[4]&quot;</span><span class="p">)</span>
+<span class="n">sc</span> <span class="o">=</span> <span class="n">SparkContext</span><span class="p">(</span><span class="n">conf</span><span class="o">=</span><span class="n">conf</span><span class="p">)</span>
+<span class="n">hc</span> <span class="o">=</span> <span class="n">HiveContext</span><span class="p">(</span><span class="n">sc</span><span class="p">)</span>
+
+<span class="c1"># 分配随机数再聚合</span>
+<span class="n">rdd1</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s1">&#39;sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+
+<span class="c1"># 给key分配随机数后缀</span>
+<span class="n">rdd2</span> <span class="o">=</span> <span class="n">rdd1</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">)),</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="c1"># [(&#39;sam_5&#39;, 1), (&#39;sam_5&#39;, 1), (&#39;sam_3&#39;, 1), (&#39;sam_5&#39;, 1), (&#39;sam_5&#39;, 1), (&#39;sam_3&#39;, 1)]</span>
+
+<span class="c1"># 局部聚合</span>
+<span class="n">rdd3</span> <span class="o">=</span> <span class="n">rdd2</span><span class="o">.</span><span class="n">reduceByKey</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd3</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="c1"># [(&#39;sam_5&#39;, 4), (&#39;sam_3&#39;, 2)]</span>
+
+<span class="c1"># 去除后缀</span>
+<span class="n">rdd4</span> <span class="o">=</span> <span class="n">rdd3</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">][:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd4</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="c1"># [(&#39;sam&#39;, 4), (&#39;sam&#39;, 2)]</span>
+
+<span class="c1"># 全局聚合</span>
+<span class="n">rdd5</span> <span class="o">=</span> <span class="n">rdd4</span><span class="o">.</span><span class="n">reduceByKey</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd5</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="c1"># [(&#39;sam&#39;, 6)]</span>
+
+
+<span class="c1"># Way2: PySpark SparkSQL实现</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="p">[[</span><span class="s1">&#39;Sam&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">],[</span><span class="s1">&#39;Flora&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+                  <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;nums&#39;</span><span class="p">])</span>
+<span class="n">Spark_df</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">Spark_df</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+
+<span class="n">Spark_df</span><span class="o">.</span><span class="n">createOrReplaceTempView</span><span class="p">(</span><span class="s2">&quot;tmp_table&quot;</span><span class="p">)</span> <span class="c1"># 注册为视图供SparkSQl使用</span>
+
+<span class="n">sql</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">with t1 as (</span>
+<span class="s2">    select concat(name,&quot;_&quot;,int(10*rand())) as new_name, name, nums</span>
+<span class="s2">    from tmp_table</span>
+<span class="s2">),</span>
+<span class="s2">t2 as (</span>
+<span class="s2">    select new_name, sum(nums) as n</span>
+<span class="s2">    from t1</span>
+<span class="s2">    group by new_name</span>
+<span class="s2">),</span>
+<span class="s2">t3 as (</span>
+<span class="s2">    select substr(new_name,0,length(new_name) -2) as name, sum(n) as nums_sum</span>
+<span class="s2">    from t2</span>
+<span class="s2">    group by substr(new_name,0,length(new_name) -2)</span>
+<span class="s2">)</span>
+<span class="s2">select *</span>
+<span class="s2">from t3</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">tt</span> <span class="o">=</span> <span class="n">hc</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span><span class="o">.</span><span class="n">toPandas</span><span class="p">()</span>
+<span class="n">tt</span>
+</pre></div>
+</div>
+<div class="figure align-default">
+<img alt="" src="https://cdn.nlark.com/yuque/0/2021/png/200056/1637546767071-7f268c0a-0a7d-4115-a57c-01d18f20e4a1.png" />
+</div>
+<div class="figure align-default">
+<img alt="" src="https://cdn.nlark.com/yuque/0/2021/png/200056/1637546856997-b9bb11b3-4af0-4917-b417-41787c75210d.png" />
+</div>
+</div>
+</div>
+<div class="section" id="broadcast-mapjoin">
+<h4>broadcast+map代替join<a class="headerlink" href="#broadcast-mapjoin" title="Permalink to this headline">¶</a></h4>
+<p>该优化策略一般限于有一个参与join的rdd的数据量不大的情况。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="c1"># 优化前:</span>
+
+<span class="n">rdd_age</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s2">&quot;LiLei&quot;</span><span class="p">,</span><span class="mi">18</span><span class="p">),(</span><span class="s2">&quot;HanMeimei&quot;</span><span class="p">,</span><span class="mi">19</span><span class="p">),(</span><span class="s2">&quot;Jim&quot;</span><span class="p">,</span><span class="mi">17</span><span class="p">),(</span><span class="s2">&quot;LiLy&quot;</span><span class="p">,</span><span class="mi">20</span><span class="p">)])</span>
+<span class="n">rdd_gender</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s2">&quot;LiLei&quot;</span><span class="p">,</span><span class="s2">&quot;male&quot;</span><span class="p">),(</span><span class="s2">&quot;HanMeimei&quot;</span><span class="p">,</span><span class="s2">&quot;female&quot;</span><span class="p">),(</span><span class="s2">&quot;Jim&quot;</span><span class="p">,</span><span class="s2">&quot;male&quot;</span><span class="p">),(</span><span class="s2">&quot;LiLy&quot;</span><span class="p">,</span><span class="s2">&quot;female&quot;</span><span class="p">)])</span>
+<span class="n">rdd_students</span> <span class="o">=</span> <span class="n">rdd_age</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rdd_gender</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_students</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>[(‘LiLy’, 20, ‘female’), (‘LiLei’, 18, ‘male’), (‘HanMeimei’, 19,
+‘female’), (‘Jim’, 17, ‘male’)] CPU times: user 43.9 ms, sys: 11.6 ms,
+total: 55.6 ms Wall time: 307 ms</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+
+<span class="c1"># 优化后:</span>
+<span class="n">rdd_age</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s2">&quot;LiLei&quot;</span><span class="p">,</span><span class="mi">18</span><span class="p">),(</span><span class="s2">&quot;HanMeimei&quot;</span><span class="p">,</span><span class="mi">19</span><span class="p">),(</span><span class="s2">&quot;Jim&quot;</span><span class="p">,</span><span class="mi">17</span><span class="p">),(</span><span class="s2">&quot;LiLy&quot;</span><span class="p">,</span><span class="mi">20</span><span class="p">)])</span>
+<span class="n">rdd_gender</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">([(</span><span class="s2">&quot;LiLei&quot;</span><span class="p">,</span><span class="s2">&quot;male&quot;</span><span class="p">),(</span><span class="s2">&quot;HanMeimei&quot;</span><span class="p">,</span><span class="s2">&quot;female&quot;</span><span class="p">),(</span><span class="s2">&quot;Jim&quot;</span><span class="p">,</span><span class="s2">&quot;male&quot;</span><span class="p">),(</span><span class="s2">&quot;LiLy&quot;</span><span class="p">,</span><span class="s2">&quot;female&quot;</span><span class="p">)],</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">ages</span> <span class="o">=</span> <span class="n">rdd_age</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+<span class="n">broads</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">ages</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">get_age</span><span class="p">(</span><span class="n">it</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ages</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">broads</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">age</span> <span class="o">=</span> <span class="n">ages</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">age</span><span class="p">,</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+<span class="n">rdd_students</span> <span class="o">=</span> <span class="n">rdd_gender</span><span class="o">.</span><span class="n">mapPartitions</span><span class="p">(</span><span class="n">get_age</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">rdd_students</span><span class="o">.</span><span class="n">collect</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>[(‘LiLei’, 18, ‘male’), (‘HanMeimei’, 19, ‘female’), (‘Jim’, 17,
+‘male’), (‘LiLy’, 20, ‘female’)] CPU times: user 14.3 ms, sys: 7.43 ms,
+total: 21.7 ms Wall time: 86.3 ms</p>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="Spark%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%A1%E7%AE%97.html" class="btn btn-neutral float-left" title="Spark分布式计算" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2022.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
