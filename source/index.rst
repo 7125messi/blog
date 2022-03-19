@@ -15,3 +15,21 @@ Welcome to 7125MESSI's BLOG's documentation!
    Spark分布式计算
 
    Spark性能调优
+
+   特征工程——特征选择的原理和实现
+
+   特征工程方法论
+
+   GBDT调优详解
+
+   XGBoost调优指南
+
+   LightGBM学习
+
+   LightGBM在Spark实战
+
+   半参数回归模型
+
+   基于UNet神经网络的城市人流预测
+
+   数据工程化案例介绍

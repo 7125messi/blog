@@ -1,0 +1,1217 @@
+===============================
+特征工程———特征选择的原理和实现
+===============================
+
+:Date:   2019-08-01T06:58:37+08:00
+
+[参考总结提炼]
+
+数据和特征决定了机器学习的上限，而模型和算法只是逼近这个上限而已。由此可见，\ **特征工程在机器学习中占有相当重要的地位**\ 。在实际应用当中，可以说特征工程是机器学习成功的关键。
+
+那特征工程是什么？
+
+   特征工程是利用数据领域的相关知识来创建能够使机器学习算法达到最佳性能的特征的过程。
+
+特征工程又包含了Feature Selection（特征选择）、Feature
+Extraction（特征提取）和Feature
+construction（特征构造）等子问题，本文主要讨论特征选择相关的方法及实现。在实际项目中，我们可能会有大量的特征可使用，有的特征携带的信息丰富，有的特征携带的信息有重叠，有的特征则属于无关特征，如果所有特征不经筛选地全部作为训练特征，经常会出现维度灾难问题，甚至会降低模型的准确性。因此，我们需要进行特征筛选，排除无效/冗余的特征，把有用的特征挑选出来作为模型的训练数据。
+
+.. _01-特征选择介绍:
+
+**01 特征选择介绍**
+===================
+
+.. _1特征按重要性分类:
+
+**1.特征按重要性分类**
+----------------------
+
+-  | 相关特征：
+   | 对于学习任务（例如分类问题）有帮助，可以提升学习算法的效果；
+
+-  | 无关特征：
+   | 对于我们的算法没有任何帮助，不会给算法的效果带来任何提升；
+
+-  | 冗余特征：
+   | 不会对我们的算法带来新的信息，或者这种特征的信息可以由其他的特征推断出；
+
+.. _2特征选择的目的:
+
+**2.特征选择的目的**
+--------------------
+
+对于一个特定的学习算法来说，哪一个特征是有效的是未知的。因此，需要从所有特征中选择出对于学习算法有益的相关特征。而且在实际应用中，经常会出现维度灾难问题。如果只选择所有特征中的部分特征构建模型，那么可以大大减少学习算法的运行时间，也可以增加模型的可解释性。
+
+.. _3特征选择的原则:
+
+**3.特征选择的原则**
+--------------------
+
+获取尽可能小的特征子集，不显著降低分类精度、不影响分类分布以及特征子集应具有稳定、适应性强等特点。
+
+.. _02-特征选择的方法:
+
+**02 特征选择的方法**
+=====================
+
+.. _1filter方法过滤式）:
+
+**1.Filter方法（过滤式）**
+--------------------------
+
+| **先进行特征选择，然后去训练学习器，所以特征选择的过程与学习器无关。**\ 相当于先对特征进行过滤操作，然后用特征子集来训练分类器。
+
+| **主要思想**\ ：对每一维特征“打分”，即给每一维的特征赋予权重，这样的权重就代表着该特征的重要性，然后依据权重排序。
+| **主要方法**\ ：
+
+-  | Chi-squared test（卡方检验）
+
+-  | Information gain（信息增益）
+
+-  | Correlation coefficient scores（相关系数）
+
+| **优点**\ ：运行速度快，是一种非常流行的特征选择方法。
+
+**缺点**\ ：无法提供反馈，特征选择的标准规范的制定是在特征搜索算法中完成，学习算法无法向特征搜索算法传递对特征的需求。另外，可能处理某个特征时由于任意原因表示该特征不重要，但是该特征与其他特征结合起来则可能变得很重要。
+
+.. _2wrapper方法封装式）:
+
+**2.Wrapper方法（封装式）**
+---------------------------
+
+| **直接把最后要使用的分类器作为特征选择的评价函数，对于特定的分类器选择最优的特征子集。**
+
+| **主要思想**\ ：将子集的选择看作是一个搜索寻优问题，生成不同的组合，对组合进行评价，再与其他的组合进行比较。这样就将子集的选择看作是一个优化问题，这里有很多的优化算法可以解决，尤其是一些启发式的优化算法，如GA、PSO（如：优化算法-粒子群算法）、DE、ABC（如：优化算法-人工蜂群算法）等。
+
+| **主要方法**\ ：递归特征消除算法。
+
+| **优点**\ ：对特征进行搜索时围绕学习算法展开的，对特征选择的标准规范是在学习算法的需求中展开的，能够考虑学习算法所属的任意学习偏差，从而确定最佳子特征，真正关注的是学习问题本身。由于每次尝试针对特定子集时必须运行学习算法，所以能够关注到学习算法的学习偏差/归纳偏差，因此封装能够发挥巨大的作用。
+
+**缺点**\ ：运行速度远慢于过滤算法，实际应用用封装方法没有过滤方法流行。
+
+.. _3embedded方法嵌入式）:
+
+**3.Embedded方法（嵌入式）**
+----------------------------
+
+| 将特征选择嵌入到模型训练当中，其训练可能是相同的模型，但是特征选择完成后，还能给予特征选择完成的特征和模型训练出的超参数，再次训练优化。
+
+| **主要思想**\ ：在模型既定的情况下学习出对提高模型准确性最好的特征。也就是在确定模型的过程中，挑选出那些对模型的训练有重要意义的特征。
+
+| **主要方法**\ ：用带有L1正则化的项完成特征选择（也可以结合L2惩罚项来优化）、随机森林平均不纯度减少法/平均精确度减少法。
+
+| **优点**\ ：对特征进行搜索时围绕学习算法展开的，能够考虑学习算法所属的任意学习偏差。训练模型的次数小于Wrapper方法，比较节省时间。
+
+**缺点**\ ：运行速度慢。
+
+.. _03-特征选择实现方法一去掉取值变化小的特征 removing-features-with-low-variance）:
+
+**03 特征选择实现方法一：去掉取值变化小的特征 （Removing features with low variance）**
+=======================================================================================
+
+| **该方法一般用在特征选择前作为一个预处理的工作，即先去掉取值变化小的特征，然后再使用其他特征选择方法选择特征。**
+
+**考察某个特征下，样本的方差值，可以认为给定一个阈值，抛弃哪些小于某个阈值的特征。**
+
+.. _1实现原理:
+
+**1.实现原理**
+--------------
+
+-  | 离散型变量：
+   | 假设某特征的特征值只有0和1，并且在所有输入样本中，95%的实例的该特征取值都是1，那就可以认为这个特征作用不大。
+   | 如果100%都是1，那这个特征就没意义了。
+
+-  | 连续型变量：
+   | 需要将连续变量离散化之后才能用。
+
+而且实际当中，一般不太会有95%以上都取某个值的特征存在，所以这种方法虽然简单但是不太好用。可以把它作为特征选择的预处理，先去掉那些取值变化小的特征，然后再从接下来提到的的特征选择方法中选择合适的进行进一步的特征选择。
+
+.. _2实现代码:
+
+**2.实现代码**
+--------------
+
+.. code:: python
+
+   from sklearn.feature_selection import VarianceThreshold
+   X = [[0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, 0], [0, 1, 1]]
+   sel = VarianceThreshold(threshold=(.8 * (1 - .8)))
+   sel.fit_transform(X)
+
+   ＃array([[0, 1],
+          [1, 0],
+          [0, 0],
+          [1, 1],
+          [1, 0],
+          [1, 1]])
+
+.. _04-特征选择实现方法二单变量特征选择:
+
+**04 特征选择实现方法二：单变量特征选择**
+=========================================
+
+单变量特征选择方法独立的衡量每个特征与响应变量之间的关系，单变量特征选择能够对每一个特征进行测试，衡量该特征和响应变量之间的关系，根据得分扔掉不好的特征。*\*
+
+**该方法简单，易于运行，易于理解，通常对于理解数据有较好的效果（但对特征优化、提高泛化能力来说不一定有效）；**\ 这种方法有许多改进的版本、变种。
+
+.. _1pearson相关系数pearson-correlation）连续型特征:
+
+**1.Pearson相关系数（Pearson Correlation）**\ (连续型特征)
+----------------------------------------------------------
+
+皮尔森相关系数是一种最简单的，能帮助\ **理解特征和响应变量之间关系的方法，该方法衡量的是变量之间的线性相关性。**
+
+.. _1）原理介绍-1:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+.. figure:: https://cdn.nlark.com/yuque/0/2019/webp/200056/1564587312822-f1ab81ec-2dc3-44ed-9a6b-9a4a6389f120.webp#align=left&display=inline&height=320&originHeight=256&originWidth=596&size=0&status=done&width=746
+   :alt: 
+
+-  | 就是用x_i、x_j的协方差除以x_i的标准差和x_j的标准差，\ **可以看成一种剔除了两个变量量纲影响、标准化后的特殊协方差。**
+
+-  | 协方差是度量各个维度偏离其均值的程度，协方差的值为正值时说明两者是正相关，否则是负相关的。
+   | 结果的取值区间为[-1，1]，-1表示完全的负相关，+1表示完全的正相关，0表示没有线性相关，绝对值表示相关性的强度。
+
+-  | 标准差也称均方差，是方差的算术平方根，能反映一个数据集的离散程度。
+
+.. _2）主要用于连续型特征的筛选不适用于离散型特征的筛选:
+
+**2）主要用于连续型特征的筛选，不适用于离散型特征的筛选。**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. _3）优缺点:
+
+**3）优缺点**
+~~~~~~~~~~~~~
+
+-  | 优点：
+   | **相关系数计算速度快、易于计算，经常在拿到数据(经过清洗和特征提取之后的)之后第一时间就执行。**\ Pearson相关系数能够表征丰富的关系，符合表示关系的正负，绝对值能够表示强度。
+
+-  | 缺点：
+   | 相关系数作为特征排序机制，\ **它只对线性关系敏感**\ ，\ **如果关系是非线性的，即便两个变量具有一一对应的关系，相关系数系数也可能会接近0。**
+
+.. _4）代码实现-1:
+
+**4）代码实现**
+~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   import numpy as np
+   from scipy.stats import pearsonr
+   np.random.seed(2019)
+   size=1000
+   x = np.random.normal(0, 1, size)
+   # 计算两变量间的相关系数
+   print("Lower noise {}".format(pearsonr(x, x + np.random.normal(0, 1, size))))
+   print("Higher noise {}".format(pearsonr(x, x + np.random.normal(0, 10, size))))
+
+.. _2互信息和最大信息系数mutual-information-and-maximal-information-coefficient）:
+
+**2.互信息和最大信息系数（Mutual information and maximal information coefficient）**
+------------------------------------------------------------------------------------
+
+如果变量不是独立的,那么我们可以通过考察联合概率分布与边缘概率分布乘积之间的
+Kullback-Leibler 散度来判断它们是否“接近”于相互独立。
+
+.. _1）互信息方法:
+
+**1）互信息方法**
+~~~~~~~~~~~~~~~~~
+
+熵H(Y)与条件熵H(Y|X)之间的差称为互信息，互信息与条件熵之间的关系:
+
+.. figure:: https://cdn.nlark.com/yuque/0/2019/webp/200056/1564587312811-175e0a0c-4acd-41c7-8b68-1269ff12c3dd.webp#align=left&display=inline&height=14&originHeight=60&originWidth=594&size=0&status=done&width=140
+   :alt: 
+
+**其实，这就是ID3决策树的特征选择规则。**
+
+互信息法也是评价定性自变量对定性因变量的相关性的，但是并不方便直接用于特征选择：
+
+-  | 它不属于度量方式，也没有办法进行归一化，在不同的数据上的结果无法做比较。
+
+-  | 只能用于离散型特征的选择，连续型特征需要先进行离散化才能用互信息进行特征选择，而互信息的结果对离散化的方式很敏感。
+
+.. _2）最大信息系数方法:
+
+**2）最大信息系数方法**
+~~~~~~~~~~~~~~~~~~~~~~~
+
+**由于互信息法并不方便直接用于特征选择，因此引入了最大信息系数。最大信息数据首先寻找一种最优的离散方式，然后把互信息取值转换成一种度量方式，取值区间为[0,1]。**
+
+.. _3）最大信息系数方法代码实现:
+
+**3）最大信息系数方法代码实现**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   x = np.random.normal(0,10,300)
+   z = x *x
+   pearsonr(x,z)
+   # 输出-0.1
+   from minepy import MINE
+   m = MINE()
+   m.compute_score(x, z)
+   print(m.mic())
+   # 输出1.0
+
+.. _3距离相关系数distance-correlation）:
+
+**3.距离相关系数（Distance correlation）**
+------------------------------------------
+
+**距离相关系数是为了克服Pearson相关系数的弱点而生的。**
+
+.. _1）原理介绍-2:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+.. figure:: https://cdn.nlark.com/yuque/0/2019/webp/200056/1564587312798-d730bc9f-ff2e-410b-8781-839fa32946a2.webp#align=left&display=inline&height=671&originHeight=652&originWidth=724&size=0&status=done&width=746
+   :alt: 
+
+**Pearson相关系数是0，我们也不能断定这两个变量是独立的（有可能是非线性相关）。**
+
+例如x和x^2之间的Pearson相关系数是0，但是两个变量并不是独立的。
+
+.. _2）代码实现-1:
+
+**2）代码实现**
+~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   from scipy.spatial.distance import pdist, squareform
+   import numpy as np
+   from numbapro import jit, float32
+   def distcorr(X, Y):
+       """ Compute the distance correlation function
+       >>> a = [1,2,3,4,5]
+       >>> b = np.array([1,2,9,4,4])
+       >>> distcorr(a, b)
+       0.762676242417
+       """
+       X = np.atleast_1d(X)
+       Y = np.atleast_1d(Y)
+       if np.prod(X.shape) == len(X):
+           X = X[:, None]
+       if np.prod(Y.shape) == len(Y):
+           Y = Y[:, None]
+       X = np.atleast_2d(X)
+       Y = np.atleast_2d(Y)
+       n = X.shape[0]
+       if Y.shape[0] != X.shape[0]:
+           raise ValueError('Number of samples must match')
+       a = squareform(pdist(X))
+       b = squareform(pdist(Y))
+       A = a - a.mean(axis=0)[None, :] - a.mean(axis=1)[:, None] + a.mean()
+       B = b - b.mean(axis=0)[None, :] - b.mean(axis=1)[:, None] + b.mean()
+       dcov2_xy = (A * B).sum()/float(n * n)
+       dcov2_xx = (A * A).sum()/float(n * n)
+       dcov2_yy = (B * B).sum()/float(n * n)
+       dcor = np.sqrt(dcov2_xy)/np.sqrt(np.sqrt(dcov2_xx) * np.sqrt(dcov2_yy))
+       return dcor
+
+.. _4基于学习模型的特征排序model-based-ranking）:
+
+**4.基于学习模型的特征排序（Model based ranking）**
+---------------------------------------------------
+
+这种方法的思路是直接使用你要用的机器学习算法，\ **针对每个单独的特征和响应变量建立预测模型。如果特征与响应变量之间的关系是非线性的，则有许多替代方案，例如基于树的方法（决策树，随机森林）、或者扩展的线性模型等**\ 。
+
+**基于树的方法是最简单的方法之一，因为他们可以很好地模拟非线性关系，不需要太多的调整。但是要避免的主要是过度拟合，因此树的深度应该相对较小，并且应该应用交叉验证。**
+
+**代码实现**
+~~~~~~~~~~~~
+
+.. code:: python
+
+   from sklearn.cross_validation import cross_val_score, ShuffleSplit
+   from sklearn.datasets import load_boston
+   from sklearn.ensemble import RandomForestRegressor
+   #Load boston housing dataset as an example
+   boston = load_boston()
+   X = boston["data"]
+   Y = boston["target"]
+   names = boston["feature_names"]
+   rf = RandomForestRegressor(n_estimators=20, max_depth=4)
+   scores = []
+   # 使用每个特征单独训练模型，并获取每个模型的评分来作为特征选择的依据。for i in range(X.shape[1]):
+        score = cross_val_score(rf, X[:, i:i+1], Y, scoring="r2",
+                                 cv=ShuffleSplit(len(X), 3, .3))
+        scores.append((round(np.mean(score), 3), names[i]))
+   print(sorted(scores, reverse=True))
+   # 输出：[(0.636, 'LSTAT'), (0.59, 'RM'), (0.472, 'NOX'), (0.369, 'INDUS'),
+   (0.311, 'PTRATIO'), (0.24, 'TAX'), (0.24, 'CRIM'), (0.185, 'RAD'),
+   (0.16, 'ZN'), (0.087, 'B'), (0.062, 'DIS'), (0.036, 'CHAS'), (0.027, 'AGE')]
+
+.. _5卡方检验:
+
+**5.卡方检验**
+--------------
+
+卡方检验是一种用途很广的计数资料的假设检验方法，由卡尔•皮尔逊提出。\ **卡方值描述两个事件的独立性或者描述实际观察值与期望值的偏离程度。卡方值越大，表名实际观察值与期望值偏离越大，也说明两个事件的相互独立性越弱。**
+
+.. _1）原理介绍-3:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+.. figure:: https://cdn.nlark.com/yuque/0/2019/webp/200056/1564587312775-f315d72f-7ba2-48e2-9274-d5d4068c1514.webp#align=left&display=inline&height=22&originHeight=68&originWidth=424&size=0&status=done&width=140
+   :alt: 
+
+**CHI值(卡方值)用于衡量实际值与理论值的差异程度，除以T是为了避免不同观察值与不同期望之间产生的偏差因T的不同而差别太大，所以除以E以消除这种弊端。**
+
+-  | 实际值与理论值偏差的绝对大小（由于平方的存在，差异被放大）
+
+-  | 差异值与理论值的相对大小
+
+.. _2）实现流程:
+
+**2）实现流程**
+~~~~~~~~~~~~~~~
+
+**CHI值越大，说明两个变量越不可能是独立无关的，也就是说CHI值越大，两个变量的相关程度也越高。**
+
+对于特征变量x1,x2,…,xn，以及分类变量y。只需要计算CHI(x1,y)、CHI(x2,y)、…、CHI(xn,y)，并按照CHI的值从大到小将特征排序。选择合适的阈值，大于阈值的特征留下，小于阈值的特征删除。这样筛选出一组特征子集就是输入模型训练的特征。
+
+.. _3）只适用于分类问题中离散型特征筛选不能用于分类问题中连续型特征的筛选也不能用于回归问题的特征筛选:
+
+**3）只适用于分类问题中离散型特征筛选，不能用于分类问题中连续型特征的筛选，也不能用于回归问题的特征筛选。**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. _4）代码实现-2:
+
+**4）代码实现**
+~~~~~~~~~~~~~~~
+
+现实方法：
+
+-  | sklearn.feature_selection.SelectKBest：
+   | 返回k个最佳特征
+
+-  | sklearn.feature_selection.SelectPercentile：
+   | 返回表现最佳的前r%个特征
+
+.. code:: python
+
+   #导入sklearn库中的SelectKBest和chi2
+   from sklearn.feature_selection import SelectKBest ,chi2
+
+   #选择相关性最高的前5个特征
+   X_chi2 = SelectKBest(chi2, k=5).fit_transform(X, y)
+   X_chi2.shape
+   输出：(27, 5)
+
+.. _总结-1:
+
+**总结**
+========
+
+-  去掉取值变化小的特征方法一般用在特征选择前作为一个预处理的工作，即先去掉取值变化小的特征，然后再使用其他特征选择方法选择特征。如果机器资源充足，并且希望尽量保留所有信息，可以把阈值设置得比较高，或者只过滤离散型特征只有一个取值的特征。
+
+-  单变量特征选择可以用于理解数据、数据的结构、特点，也可以用于排除不相关特征，但是它不能发现冗余特征。
+
+-  去掉取值变化小的特征方法和单变量特征选择方法都属于过滤式类特征筛选方法，但是学习算法无法向特征搜索算法传递对特征的需求。为了真正关注的是学习问题本身，我们将在下面继续介绍Wrapper方法和Embedded方法的原理与实现。
+
+上面，我们介绍了特征选择的分类，并详细介绍了过滤式特征筛选的原理与实现。下面继续介绍\ **封装式和嵌入式特征筛选的原理与实现**\ 。
+
+.. _01-特征选择实现方法三线性模型与正则化:
+
+**01 特征选择实现方法三：线性模型与正则化**
+===========================================
+
+.. _1主要思想:
+
+**1.主要思想**
+--------------
+
+当所有特征在相同尺度上时，最重要的特征应该在模型中具有最高系数，而与输出变量不相关的特征应该具有接近零的系数值。即使使用简单的线性回归模型，当数据不是很嘈杂（或者有大量数据与特征数量相比）并且特征（相对）独立时，这种方法也能很好地工作。
+
+.. _2正则化模型:
+
+**2.正则化模型**
+----------------
+
+正则化就是把额外的约束或者惩罚项加到已有模型（损失函数）上，以防止过拟合并提高泛化能力。损失函数由原来的E(X,Y)变为E(X,Y)+alpha||w||，w是模型系数组成的向量（有些地方也叫参数parameter，coefficients），||·|\|
+
+一般是L1或者L2范数，alpha是一个可调的参数，控制着正则化的强度。当用在线性模型上时，L1正则化和L2正则化也称为Lasso和Ridge。
+
+.. _1）l1正则化lasso-regression:
+
+**1）L1正则化/Lasso regression**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+| L1正则化将系数w的l1范数作为惩罚项加到损失函数上，由于正则项非零，这就迫使那些弱的特征所对应的系数变成0。因此L1正则化往往会使学到的模型很稀疏（系数w经常为0），这个特性使得L1正则化成为一种很好的特征选择方法。
+| **Lasso能够挑出一些优质特征，同时让其他特征的系数趋于0。当如需要减少特征数的时候它很有用，但是对于数据理解来说不是很好用。**
+
+.. _2）l2正则化ridge-regression:
+
+**2）L2正则化/Ridge regression**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+L2正则化将系数向量的L2范数添加到了损失函数中。
+
+-  | 由于L2惩罚项中系数是二次方的，这使得L2和L1有着诸多差异，最明显的一点就是，\ **L2正则化会让系数的取值变得平均。**
+
+-  | 对于关联特征，这意味着他们能够获得更相近的对应系数。
+
+-  | Ridge将回归系数均匀的分摊到各个关联变量上。
+
+**L2正则化对于特征选择来说一种稳定的模型，不像L1正则化那样，系数会因为细微的数据变化而波动。所以L2正则化和L1正则化提供的价值是不同的，L2正则化对于特征理解来说更加有用：表示能力强的特征对应的系数是非零。**
+
+.. _3原理介绍:
+
+**3.原理介绍**
+--------------
+
+| 多元线性回归，具有n个特征值，预测公式如下。
+
+.. figure:: https://cdn.nlark.com/yuque/0/2019/webp/200056/1564587466636-af0940b0-2fd3-4027-992c-37f2655c09a0.webp#align=left&display=inline&height=40&originHeight=66&originWidth=790&size=0&status=done&width=463
+   :alt: 
+
+| 多元线性回归方程演变成求θ。每个特征都有对应的权重系数coef，特征的权重系数的正负值代表特征与目标值是正相关还是负相关，特征的权重系数的绝对值代表重要性。
+
+| sklearn中
+  中LinearRegression的fit()方法就是通过训练集求出θ，LinearRegression的两个属性intercept\ *和coef*\ 分别对应θ0和θ1-θn。
+
+.. figure:: https://cdn.nlark.com/yuque/0/2019/webp/200056/1564587466664-f283bec2-f220-4c3a-9696-136deadaa436.webp#align=left&display=inline&height=193&originHeight=174&originWidth=418&size=0&status=done&width=466
+   :alt: 
+
+.. _4代码实现:
+
+**4.代码实现**
+--------------
+
+.. _1）普通线性模型:
+
+**1）普通线性模型**
+~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   #获取boston数据
+   boston=datasets.load_boston()
+   x=boston.data
+   y=boston.target
+   #过滤掉异常值
+   x=x[y<50]
+   y=y[y<50]
+   reg=LinearRegression()
+   reg.fit(x,y)
+   #求排序后的coef
+   coefSort=reg.coef_.argsort()
+   #featureNameSort: 按对标记值的影响，从小到大的各特征值名称
+   #featureCoefSore：按对标记值的影响，从小到大的coef_
+   featureNameSort=boston.feature_names[coefSort]
+   featureCoefSore=reg.coef_[coefSort]
+   print("featureNameSort:", featureNameSort)
+   print("featureCoefSore:", featureCoefSore)
+   # 输出：featureNameSort: ['NOX' 'DIS' 'PTRATIO' 'LSTAT' 'CRIM' 'INDUS' 'AGE' 'TAX' 'B' 'ZN' 'RAD' 'CHAS' 'RM']
+   featureCoefSore: [-1.24268073e+01 -1.21088069e+00 -8.38888137e-01 -3.50952134e-01
+    -1.05574295e-01 -4.35179251e-02 -2.36116881e-02 -1.37702943e-02 7.93577159e-03
+   3.52748549e-02  2.50740082e-01  4.55405227e-01 3.75411229e+00]
+
+结果分析：
+
+-  | 正相关影响系数最大的特征值是”RM”：房间的平均数量，系数值为3.75。
+
+-  | 负相关影响系数最大的特征值是”NOX”:一氧化氮浓度,系数值为-1.24。
+
+.. _2）l1正则化线性模型:
+
+**2）L1正则化线性模型**
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   #A helper method for pretty-printing linear models
+   def pretty_print_linear(coefs, names = None, sort = False):
+       if names == None:
+           names = ["X%s" % x for x in range(len(coefs))]
+       lst = zip(coefs, names)
+       if sort:
+           lst = sorted(lst,  key = lambda x:-np.abs(x[0]))
+       return " + ".join("%s * %s" % (round(coef, 3), name)
+                                      for coef, name in lst)
+   from sklearn.linear_model import Lasso
+   from sklearn.preprocessing import StandardScaler
+   from sklearn.datasets import load_boston
+   boston = load_boston()
+   scaler = StandardScaler()
+   X = scaler.fit_transform(boston["data"])
+   Y = boston["target"]
+   names = boston["feature_names"]
+   lasso = Lasso(alpha=.3)
+   lasso.fit(X, Y)
+   print("Lasso model: {}".format(
+         pretty_print_linear(lasso.coef_, names, sort = True)))
+   # 输出：Lasso model: -3.707 * LSTAT + 2.992 * RM + -1.757 * PTRATIO
+   + -1.081 * DIS + -0.7 * NOX + 0.631 * B + 0.54 * CHAS + -0.236 * CRIM
+   + 0.081 * ZN + -0.0 * INDUS + -0.0 * AGE + 0.0 * RAD + -0.0 * TAX
+
+许多特征具有系数0。L1正则化回归的稳定性与非正则化线性模型类似，这意味着当数据中存在相关特征时，系数（以及特征等级）即使在小数据变化时也会发生显着变化。
+
+.. _3）l2正则化线性模型:
+
+**3）L2正则化线性模型**
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   from sklearn.linear_model import Ridge
+   from sklearn.metrics import r2_score
+   size = 100
+   #We run the method 10 times with different random seeds
+   for i in range(10):
+       print("Random seed {}".format(i))
+       np.random.seed(seed=i)
+       X_seed = np.random.normal(0, 1, size)
+       X1 = X_seed + np.random.normal(0, .1, size)
+       X2 = X_seed + np.random.normal(0, .1, size)
+       X3 = X_seed + np.random.normal(0, .1, size)
+       Y = X1 + X2 + X3 + np.random.normal(0, 1, size)
+       X = np.array([X1, X2, X3]).T
+       lr = LinearRegression()
+       lr.fit(X,Y)
+       print("Linear model: {}".format(pretty_print_linear(lr.coef_)))
+       ridge = Ridge(alpha=10)
+       ridge.fit(X,Y)
+       print("Ridge model: {}".format(pretty_print_linear(ridge.coef_)))
+   # 输出
+   Random seed 0
+   Linear model: 0.728 * X0 + 2.309 * X1 + -0.082 * X2
+   Ridge model: 0.938 * X0 + 1.059 * X1 + 0.877 * X2
+   Random seed 1
+   Linear model: 1.152 * X0 + 2.366 * X1 + -0.599 * X2
+   Ridge model: 0.984 * X0 + 1.068 * X1 + 0.759 * X2
+   Random seed 2
+   Linear model: 0.697 * X0 + 0.322 * X1 + 2.086 * X2
+   Ridge model: 0.972 * X0 + 0.943 * X1 + 1.085 * X2
+   Random seed 3
+   Linear model: 0.287 * X0 + 1.254 * X1 + 1.491 * X2
+   Ridge model: 0.919 * X0 + 1.005 * X1 + 1.033 * X2
+   Random seed 4
+   Linear model: 0.187 * X0 + 0.772 * X1 + 2.189 * X2
+   Ridge model: 0.964 * X0 + 0.982 * X1 + 1.098 * X2
+   Random seed 5
+   Linear model: -1.291 * X0 + 1.591 * X1 + 2.747 * X2
+   Ridge model: 0.758 * X0 + 1.011 * X1 + 1.139 * X2
+   Random seed 6
+   Linear model: 1.199 * X0 + -0.031 * X1 + 1.915 * X2
+   Ridge model: 1.016 * X0 + 0.89 * X1 + 1.091 * X2
+   Random seed 7
+   Linear model: 1.474 * X0 + 1.762 * X1 + -0.151 * X2
+   Ridge model: 1.018 * X0 + 1.039 * X1 + 0.901 * X2
+   Random seed 8
+   Linear model: 0.084 * X0 + 1.88 * X1 + 1.107 * X2
+   Ridge model: 0.907 * X0 + 1.071 * X1 + 1.008 * X2
+   Random seed 9
+   Linear model: 0.714 * X0 + 0.776 * X1 + 1.364 * X2
+   Ridge model: 0.896 * X0 + 0.903 * X1 + 0.98 * X2
+
+从示例中可以看出，线性回归的系数变化很大，具体取决于生成的数据。然而，对于L2正则化模型，系数非常稳定并且密切反映数据的生成方式（所有系数接近1）。
+
+.. _02-特征选择实现方法四随机森林选择:
+
+**02 特征选择实现方法四：随机森林选择**
+=======================================
+
+**随机森林具有准确率高、鲁棒性好、易于使用等优点，这使得它成为了目前最流行的机器学习算法之一。随机森林提供了两种特征选择的方法：mean
+decrease impurity和mean decrease accuracy。**
+
+.. _1平均不纯度减少mean-decrease-impurity）:
+
+**1.平均不纯度减少（mean decrease impurity）**
+----------------------------------------------
+
+.. _1）原理介绍-4:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+-  | 随机森林由多颗CART决策树构成，决策树中的每一个节点都是关于某个特征的条件，为的是将数据集按照不同的响应变量一分为二。
+
+-  | CART利用不纯度可以确定节点（最优条件），对于分类问题，通常采用基尼不纯度，对于回归问题，通常采用的是方差或者最小二乘拟合。
+
+-  | 当训练决策树的时候，可以计算出每个特征减少了多少树的不纯度。对于一个决策树森林来说，可以算出每个特征平均减少了多少不纯度，并把它平均减少的不纯度作为特征选择的标准。
+
+-  | 随机森林基于不纯度的排序结果非常鲜明，在得分最高的几个特征之后的特征，得分急剧的下降。
+
+.. _2）代码实现-2:
+
+**2）代码实现**
+~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   from sklearn.datasets import load_boston
+   from sklearn.ensemble import RandomForestRegressor
+   import numpy as np
+   #Load boston housing dataset as an example
+   boston = load_boston()
+   X = boston["data"]
+   Y = boston["target"]
+   names = boston["feature_names"]
+   # 训练随机森林模型，并通过feature_importances_属性获取每个特征的重要性分数。rf = RandomForestRegressor()
+   rf.fit(X, Y)
+   print("Features sorted by their score:")
+   print(sorted(zip(map(lambda x: round(x, 4), rf.feature_importances_), names),reverse=True))
+
+.. _2平均精确度减少mean-decrease-accuracy）:
+
+**2.平均精确度减少（mean decrease accuracy）**
+----------------------------------------------
+
+.. _1）原理介绍-5:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+-  | **通过直接度量每个特征对模型精确率的影响来进行特征选择。**
+
+-  | 主要思路是打乱每个特征的特征值顺序，并且度量顺序变动对模型的精确率的影响。
+
+-  | 对于不重要的变量来说，打乱顺序对模型的精确率影响不会太大。
+
+-  | 对于重要的变量来说，打乱顺序就会降低模型的精确率。
+
+.. _2）代码实现-3:
+
+**2）代码实现**
+~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   from sklearn.cross_validation import ShuffleSplit
+   from sklearn.metrics import r2_score
+   from collections import defaultdict
+   X = boston["data"]
+   Y = boston["target"]
+   rf = RandomForestRegressor()
+   scores = defaultdict(list)
+   #crossvalidate the scores on a number of different random splits of the data
+   for train_idx, test_idx in ShuffleSplit(len(X), 100, .3):
+       X_train, X_test = X[train_idx], X[test_idx]
+       Y_train, Y_test = Y[train_idx], Y[test_idx]
+       # 使用修改前的原始特征训练模型，其acc作为后续混洗特征值后的对比标准。r = rf.fit(X_train, Y_train)
+        acc = r2_score(Y_test, rf.predict(X_test))
+        # 遍历每一列特征
+       for i in range(X.shape[1]):
+           X_t = X_test.copy()
+           # 对这一列特征进行混洗，交互了一列特征内部的值的顺序
+           np.random.shuffle(X_t[:, i])
+           shuff_acc = r2_score(Y_test, rf.predict(X_t))
+           # 混洗某个特征值后，计算平均精确度减少程度。scores[names[i]].append((acc-shuff_acc)/acc)
+   print("Features sorted by their score:")
+   print(sorted([(round(np.mean(score), 4), feat) for feat, score in scores.items()], reverse=True))
+
+.. _03-特征选择实现方法五顶层特征选择:
+
+**03 特征选择实现方法五：顶层特征选择**
+=======================================
+
+顶层特征选择发建立在基于模型的特征选择方法基础之上的，例如线性回归和SVM等，在不同的子集上建立模型，然后汇总最终确定特征得分。
+
+.. _1稳定性选择stability-selection）:
+
+**1.稳定性选择（Stability selection）**
+---------------------------------------
+
+稳定性选择常常是一种既能够有助于理解数据又能够挑出优质特征的这种选择。
+
+.. _1）原理介绍-6:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+-  | 稳定性选择是一种基于二次抽样和选择算法相结合较新的方法，选择算法可以是回归、SVM或其他类似的方法。
+
+-  | **它的主要思想是在不同的数据子集和特征子集上运行特征选择算法，不断的重复，最终汇总特征选择结果。比如可以统计某个特征被认为是重要特征的频率（被选为重要特征的次数除以它所在的子集被测试的次数）。**
+
+-  | 理想情况下，重要特征的得分会接近100%。稍微弱一点的特征得分会是非0的数，而最无用的特征得分将会接近于0。
+
+.. _2）代码实现-4:
+
+**2）代码实现**
+~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   from sklearn.linear_model import RandomizedLasso
+   from sklearn.datasets import load_boston
+   boston = load_boston()
+   #using the Boston housing data.
+   #Data gets scaled automatically by sklearn's implementation
+   X = boston["data"]
+   Y = boston["target"]
+   names = boston["feature_names"]
+   rlasso = RandomizedLasso(alpha=0.025)
+   rlasso.fit(X, Y)
+   print("Features sorted by their score:")
+   print(sorted(zip(map(lambda x: round(x, 4), rlasso.scores_), names),
+                reverse=True))
+
+.. _2递归特征消除recursive-feature-eliminationrfe）:
+
+**2.递归特征消除（Recursive feature elimination，RFE）**
+--------------------------------------------------------
+
+.. _1）原理介绍-7:
+
+**1）原理介绍**
+~~~~~~~~~~~~~~~
+
+-  | **递归特征消除的主要思想是反复的构建模型（如SVM或者回归模型）然后选出最好的（或者最差的）的特征（可以根据系数来选），把选出来的特征放到一遍，然后在剩余的特征上重复这个过程，直到所有特征都遍历了。**
+
+-  | 这个过程中特征被消除的次序就是特征的排序。因此，这是一种寻找最优特征子集的贪心算法。
+
+-  | RFE的稳定性很大程度上取决于在迭代的时候底层用哪种模型。
+
+   -  | 假如RFE采用的普通的回归，没有经过正则化的回归是不稳定的，那么RFE就是不稳定的。
+
+   -  | 假如RFE采用的是Ridge，而用Ridge正则化的回归是稳定的，那么RFE就是稳定的。
+
+.. _2）代码实现-5:
+
+**2）代码实现**
+~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   from sklearn.feature_selection import RFE
+   from sklearn.linear_model import LinearRegression
+   boston = load_boston()
+   X = boston["data"]
+   Y = boston["target"]
+   names = boston["feature_names"]
+   #use linear regression as the model
+   lr = LinearRegression()
+   #rank all features, i.e continue the elimination until the last one
+   rfe = RFE(lr, n_features_to_select=1)
+   rfe.fit(X,Y)
+   print("Features sorted by their rank:")
+   print(sorted(zip(map(lambda x: round(x, 4), rfe.ranking_), names)))
+   结果输出
+   Features sorted by their rank:
+   [(1, 'NOX'), (2, 'RM'), (3, 'CHAS'), (4, 'PTRATIO'), (5, 'DIS'),
+   (6, 'LSTAT'), (7, 'RAD'), (8, 'CRIM'), (9, 'INDUS'), (10, 'ZN'),
+   (11, 'TAX'), (12, 'B'), (13, 'AGE')]
+
+.. _总结-2:
+
+**总结**
+========
+
+-  | 单变量特征选择可以用于理解数据、数据的结构、特点，也可以用于排除不相关特征，但是它不能发现冗余特征。
+
+-  | 正则化的线性模型可用于特征理解和特征选择。相比起L1正则化，L2正则化的表现更加稳定，L2正则化对于数据的理解来说很合适。由于响应变量和特征之间往往是非线性关系，可以采用basis
+     expansion的方式将特征转换到一个更加合适的空间当中，在此基础上再考虑运用简单的线性模型。
+
+-  | 随机森林是一种非常流行的特征选择方法，它易于使用。但它有两个主要问题：
+
+   -  | **重要的特征有可能得分很低（关联特征问题）**
+
+   -  | **这种方法对特征变量类别多的特征越有利（偏向问题）**
+
+-  | 特征选择在很多机器学习和数据挖掘场景中都是非常有用的。在使用的时候要弄清楚自己的目标是什么，然后找到哪种方法适用于自己的任务。
+
+   -  | **当选择最优特征以提升模型性能的时候，可以采用交叉验证的方法来验证某种方法是否比其他方法要好。**
+
+   -  | **当用特征选择的方法来理解数据的时候要留心，特征选择模型的稳定性非常重要，稳定性差的模型很容易就会导致错误的结论。**
+
+   -  | **对数据进行二次采样然后在子集上运行特征选择算法能够有所帮助，如果在各个子集上的结果是一致的，那就可以说在这个数据集上得出来的结论是可信的，可以用这种特征选择模型的结果来理解数据。**
+
+-  | 关于训练模型的特征筛选，个人建议的实施流程 :
+
+   -  | 数据预处理后，先排除取值变化很小的特征。如果机器资源充足，并且希望尽量保留所有信息，可以把阈值设置得比较高，或者只过滤离散型特征只有一个取值的特征。
+
+   -  | 如果数据量过大，计算资源不足（内存不足以使用所有数据进行训练、计算速度过慢），可以使用单特征选择法排除部分特征。这些被排除的特征并不一定完全被排除不再使用，在后续的特征构造时也可以作为原始特征使用。
+
+-  | 如果此时特征量依然非常大，或者是如果特征比较稀疏时，可以使用PCA（主成分分析）和LDA（线性判别）等方法进行特征降维。
+
+-  | 经过样本采样和特征预筛选后，训练样本可以用于训练模型。但是可能由于特征数量比较大而导致训练速度慢，或者想进一步筛选有效特征或排除无效特征（或噪音），我们可以使用正则化线性模型选择法、随机森林选择法或者顶层特征选择法进一步进行特征筛选。
+
+**最后，特征筛选是为了理解数据或更好地训练模型，我们应该根据自己的目标来选择适合的方法。为了更好/更容易地训练模型而进行的特征筛选，如果计算资源充足，应尽量避免过度筛选特征，因为特征筛选很容易丢失有用的信息。如果只是为了减少无效特征的影响，为了避免过拟合，可以选择随机森林和XGBoost等集成模型来避免对特征过拟合。**
+
+实际工程中常用方法总结
+======================
+
+-  具有高missing-values百分比的特征
+
+-  具有高相关性的特征
+
+-  对模型预测结果无贡献的特征（即zero importance）
+
+-  对模型预测结果只有很小贡献的特征（即low importance）
+
+-  具有单个值的特征（即数据集中该特征取值的集合只有一个元素）
+
+requirements：
+
+-  lightgbm==2.1.1
+
+-  matplotlib==2.1.2
+
+-  seaborn==0.8.1
+
+-  numpy==1.14.5
+
+-  pandas==0.23.1
+
+-  scikit-learn==0.19.1
+
+feature_selector.py
+https://notebooks.azure.com/messi7125/projects/feature-engineering/html/tool2_feature_selector/feature_selector.py
+
+FeatureSelector有五个函数用于识别要删除的列：
+
+-  identify_missing
+
+-  identify_single_unique
+
+-  identify_collinear
+
+-  identify_zero_importance
+
+-  identify_low_importance
+
+.. code:: python
+
+   from feature_selector.selector import FeatureSelector
+   import pandas as pd
+
+   train = pd.read_csv('../data/credit_example.csv')
+   train_labels = train['TARGET']
+   train = train.drop(columns = ['TARGET'])
+
+.. code:: python
+
+   # 创建 feature-selector 实例，并传入features 和labels
+   fs = FeatureSelector(data = train, labels = train_labels)
+   fs
+
+.. _1-missing-values:
+
+1. Missing Values
+-----------------
+
+该方法用于选择missing value
+百分比大于指定值(通过missing_threshold指定百分比)的feature。该方法能应用于监督学习和非监督学习的特征选择。
+
+.. code:: python
+
+   # 选择出missing value 百分比大于60%的特征
+   fs.identify_missing(missing_threshold=0.6)
+
+   # 查看选择出的特征(可以通过ops字典访问missing)
+   missing_features = fs.ops['missing']
+   missing_features
+
+   # 绘制所有特征missing value百分比的直方图
+   # 该方法内部使用pandas 统计数据集中所有feature的missing value 的百分比，然后选择出百分比大于阈值的特征
+   fs.plot_missing()
+
+   # 有关缺失值的详细信息，我们可以访问`missing_stats`属性，这是所有要素缺失分数的数据框。
+   fs.missing_stats.head(17)
+
+.. _2-single-unique-value:
+
+2. Single Unique Value
+----------------------
+
+该方法用于选择只有单个取值的feature，单个值的feature的方差为0，对于模型的训练不会有任何作用（从信息熵的角度看，该feature的熵为0）。该方法可应用于监督学习和非监督学习。
+
+.. code:: python
+
+   # 选择出只有单个值的feature
+   fs.identify_single_unique()
+
+   # 查看选择出的feature
+   single_unique = fs.ops['single_unique']
+   single_unique
+
+   #绘制所有feature unique value的直方图
+   fs.plot_unique()
+
+   # 该方法内部的内部实现很简单，只是通过DataFrame.nunique方法统计了每个feature取值的个数，然后选择出nunique==1的feature。
+   fs.unique_stats.head()
+
+.. _3-collinear-highly-correlated-features:
+
+3. Collinear (highly correlated) Features
+-----------------------------------------
+
+该方法基于Pearson相关系数找到共线特征对。
+对于高于指定阈值的每对（以绝对值表示），它标识要删除的变量之一。
+我们需要传入一个\ ``correlation_threshold``\ 。该方法用于选择相关性大于指定值(通过correlation_threshold指定值)的feature。该方法同样适用于监督学习和非监督学习。
+
+.. code:: python
+
+   fs.identify_collinear(correlation_threshold=0.975,one_hot='True')
+
+   # 不对feature进行one-hot encoding（默认为False）, 然后选择出相关性大于97.5%的feature, 
+   fs.identify_collinear(correlation_threshold=0.975)
+
+   # 查看选择的feature
+   correlated_features = fs.ops['collinear']
+   correlated_features[:5]
+
+   # 绘制选择的特征的相关性heatmap
+   fs.plot_collinear()
+
+   # 绘制所有特征的相关性heatmap
+   fs.plot_collinear(plot_all=True)
+
+   fs.identify_collinear(correlation_threshold=0.98)
+   fs.plot_collinear()
+
+该方法内部主要执行步骤如下：
+
+-  根据参数'one_hot'对数据集特征进行one-hot
+   encoding（调用pd.get_dummies方法）。如果'one_hot=True'则对特征将进行one-hot
+   encoding，并将编码的特征与原数据集整合起来组成新的数据集，如果'one_hot=False'则什么不做，进入下一步；
+
+-  计算步骤1得出数据集的相关矩阵 C (通过DataFrame.corr()，注意 C
+   也为一个DateFrame)，并取相关矩阵的上三角部分得到 C_{upper} ；
+
+-  遍历 C_{upper}
+   的每一列(即每一个特征)，如果该列的任何一个相关值大于correlation_threshold，则取出该列，并放到一个列表中（该列表中的feature，即具有high
+   相关性的特征，之后会从数据集去除）；
+
+-  要查看阈值以上的核心化的详细信息，我们访问record_collinear属性，该属性是一个数据框。
+   将删除drop_feature，对于将要删除的每个要素，可能存在与corr_feature之间的几个相关性，它们位于correlation_threshold之上。
+
+.. code:: python
+
+   fs.record_collinear
+
+.. _4-zero-importance-features:
+
+4. Zero Importance Features
+---------------------------
+
+此方法依赖于机器学习模型来识别要删除的要素。因此，它需要有标签的监督学习问题。该方法通过使用[LightGBM库]（\ http://lightgbm.readthedocs.io/en/latest/Quick-Start.html\ ）中实现的梯度增强机来查找特征重要性。
+
+要减少计算出的特征重要性的方差，模型将默认训练10次。默认情况下，该模型还使用验证集（15％的训练数据）进行早期停止训练，以确定要训练的最佳估计量。以下参数可以传递给identify_zero_importance方法：
+
+-  task：“分类”或“回归”。度量标准和标签必须与任务匹配
+
+-  eval_metric：用于提前停止的度量（例如auc用于分类或l2用于回归）。要查看可用指标列表，请参阅[LightGBM
+   docs]（\ http://testlightgbm.readthedocs.io/en/latest/Parameters.html#metric-parameters\ ）
+
+-  n_iterations：训练次数。功能重要性在训练运行中取平均值（默认值= 10）
+
+-  early_stopping：训练模型时是否使用提前停止（默认= True）。
+   [提前停止]（\ https://en.wikipedia.org/wiki/Early_stopping\ ）停止训练估算器（决策树），当验证集上的性能不再降低指定数量的估算器时（默认情况下，此实现中为100）
+   。早期停止是一种正规化形式，用于防止过度拟合训练数据
+
+首先对数据进行单热编码，以便在模型中使用。这意味着可以从一热编码创建一些零重要性特征。要查看单热编码列，我们可以访问FeatureSelector的one_hot_features。
+
+   注意事项_：与其他方法相比，模型的特征不确定性是非确定性的（具有一点随机性）。运行此方法的结果可以在每次运行时更改。
+
+该方法用于选择对模型预测结果毫无贡献的feature(即zero
+importance，从数据集中去除或者保留该feature对模型的结果不会有任何影响)。
+
+该方法以及之后的identify_low_importance都只适用于监督学习(即需要label,这也是为什么实例化feature-selector时需要传入labels参数的原因）。feature-selector通过用数据集训练一个梯度提升机(Gradient
+Boosting machine,
+GBM)，然后由GBM得到每一个feature的重要性分数，对所有特征的重要性分数进行归一化处理，选择出重要性分数等于零的feature。
+
+-  为了使计算得到的feature重要性分数具有很小的方差，identify_zero_importance内部会对GBM训练多次，取多次训练的平均值，得到最终的feature重要性分数。
+
+-  为了防止过拟合，identify_zero_importance内部从数据集中抽取一部分作为验证集，在训练GBM的时候，计算GBM在验证集上的某一metric，当metric满足一定条件时，停止GBM的训练。
+
+需要注意GBM训练过程是随机的，所以每次运行identify_zero_importance得到feature
+importance分数都会发生变化，但按照importance排序之后，至少前几个最重要的feature顺序不会变化。
+
+该方法内部主要执行了以下步骤：
+
+-  对各个feature进行one-hot encoding，然后将one-hot
+   encoding的feature和原数据集合并成新的数据集(使用pd.get_dummies完成)；
+
+-  根据task的取值，实例化lightgbm.LGBMClassifier或者lightgbm.LGBMRegressor
+   model；
+
+-  根据early_stopping的取值选择是否需要提前停止训练，并向model.fit传入相应的参数，然后开始训练model；
+
+-  根据model得到该次训练的feature importance；
+
+-  执行n_iterations次步骤1-4；
+
+-  取多次训练的feature importance的平均值，得到最终的feature
+   importance；
+
+-  选择出feature importance等于0的feature；
+
+.. code:: python
+
+   # 选择zero importance的feature,
+   # 
+   # 参数说明：
+   #          task: 'classification' / 'regression', 如果数据的模型是分类模型选择'classificaiton',
+   #                否则选择'regression'
+   #          eval_metric: 判断提前停止的metric. for example, 'auc' for classification, and 'l2' for regression problem
+   #          n_iteration: 训练的次数
+   #          early_stopping: True/False, 是否需要提前停止
+
+   fs.identify_zero_importance(task = 'classification', 
+                               eval_metric = 'auc', 
+                               n_iterations = 10, 
+                               early_stopping = True)
+
+   # 运行GBM需要对这些功能进行one-hot。 这些功能保存在FeatureSelector的one_hot_features属性中。 原始功能保存在base_features中。
+   one_hot_features = fs.one_hot_features
+   base_features = fs.base_features
+   print('There are %d original features' % len(base_features))
+   print('There are %d one-hot features' % len(one_hot_features))
+
+   # FeatureSelector的data属性保存原始数据框。 在一次独热编码之后，data_all属性保存原始数据加上一独热编码特征。
+   fs.data_all.head(10)
+
+   zero_importance_features = fs.ops['zero_importance']
+   zero_importance_features[10:15]
+
+Plot Feature Importances
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  使用plot_feature_importances'的特征重要性图将向我们显示plot_n`最重要的特征（在标准化的尺度上，特征总和为1）。
+   它还向我们展示了累积特征重要性与特征数量的关系。
+
+-  当我们绘制要素重要性时，我们可以传入一个“阈值”，用于标识达到指定累积要素重要性所需的要素数。
+   例如，threshold = 0.99将告诉我们占总重要性99％所需的功能数量。
+
+.. code:: python
+
+   # 查看选择出的zero importance feature
+   # 前12个最重要的feature归一化后的importance分数的条形图
+   # feature 个数与feature importance累积和的关系图
+   fs.plot_feature_importances(threshold = 0.99, plot_n = 12)
+
+   # 可以在FeatureSelector的feature_importances属性中访问所有要素重要性
+   fs.feature_importances.head(10)
+
+   # 我们可以使用这些结果来仅选择'n'最重要的特征。 例如，如果我们想要前100名最重要，我们可以做以下事情
+   one_hundred_features = list(fs.feature_importances.loc[:99, 'feature'])
+   print(len(one_hundred_features))
+   one_hundred_features[:10]
+
+.. _5-low-importance-features:
+
+5. Low Importance Features
+--------------------------
+
+该方法是使用identify_zero_importance计算的结果，选择出对importance累积和达到指定阈值没有贡献的feature（这样说有点拗口），即图5中蓝色虚线之后的feature。该方法只适用于监督学习。identify_low_importance有点类似于PCA中留下主要分量去除不重要的分量。
+
+.. code:: python
+
+   # 选择出对importance累积和达到99%没有贡献的feature
+   fs.identify_low_importance(cumulative_importance = 0.99)
+
+   # 查看选择出的feature(该方法选择出的feature其实包含了zero importance的feature)
+   len(fs.ops['low_importance'])
+
+   # 要删除的低重要性功能是那些对指定的累积重要性没有贡献的功能。 这些也可以在`ops`字典中找到。
+   low_importance_features = fs.ops['low_importance']
+   low_importance_features[:5]
+
+.. _6-removing-features:
+
+6 Removing Features
+-------------------
+
+一旦我们确定要删除的功能，我们就可以通过多种方式删除这些功能。
+我们可以访问removal_ops字典中的任何功能列表并手动删除列。
+我们也可以使用remove方法，传入识别我们想要删除的特征的方法。
+
+此方法返回结果数据，然后我们可以将其用于机器学习。
+仍然可以在功能选择器的“data”属性中访问原始数据。
+
+小心用于删除功能的方法！
+在使用remove函数之前检查将要删除的功能是个好主意。
+
+feature-selector中提供了remove方法将选择的特征从数据集中去除，并返回去除特征之后的数据集。
+
+.. code:: python
+
+   train_no_missing = fs.remove(methods = ['missing'])
+   train_no_missing_zero = fs.remove(methods = ['missing', 'zero_importance'])
+
+   # To remove the features from all of the methods, pass in method='all'. Before we do this, we can check how many features will be removed using check_removal. This returns a list of all the features that have been idenfitied for removal.
+
+   # 要从所有方法中删除要素，请传入method ='all'。 
+   # 在我们执行此操作之前，我们可以使用check_removal检查要删除的功能数量。 这将返回已识别要删除的所有功能的列表。
+   all_to_remove = fs.check_removal()
+   all_to_remove[10:25]
+
+
+   # 去除所有类型的特征
+   #    参数说明：
+   #       methods: 
+   #               desc:  需要去除哪些类型的特征
+   #               type:  string / list-like object
+   #             values:  'all' 或者是 ['missing', 'single_unique', 'collinear', 'zero_importance', 'low_importance']
+   #                      中多个方法名的组合
+   #      keep_one_hot: 
+   #              desc: 是否需要保留one-hot encoding的特征
+   #              type: boolean
+   #              values: True/False
+   #              default: True
+   train_removed = fs.remove(methods = 'all')
+
+
+   ### Handling One-Hot Features
+   # 如果我们查看返回的数据框，我们可能会注意到原始数据中没有的几个新列。 
+   # 这些是在对机器学习进行独热编码时创建的。 要删除所有独热编码特征值，我们可以将`keep_one_hot = False`传递给`remove`方法。
+   train_removed_all = fs.remove(methods = 'all', keep_one_hot=False)
+   print('Original Number of Features', train.shape[1])
+   print('Final Number of Features: ', train_removed_all.shape[1])
+
+.. _7-alternative-option-for-using-all-methods:
+
+7 Alternative Option for Using all Methods
+------------------------------------------
+
+如果我们不想一次运行一个识别方法，我们可以使用identify_all在一次调用中运行所有方法。
+
+对于此函数，我们需要传入参数字典以用于每个单独的识别方法。
+
+以下代码在一次调用中完成上述步骤。
+
+.. code:: python
+
+   fs = FeatureSelector(data = train, labels = train_labels)
+
+   # 少了下面任何一个参数都会报错，raise ValueError
+   fs.identify_all(selection_params = {'missing_threshold': 0.6, 
+                                       'correlation_threshold': 0.98, 
+                                       'task': 'classification', 
+                                       'eval_metric': 'auc', 
+                                       'cumulative_importance': 0.99})
+   train_removed_all_once = fs.remove(methods = 'all', keep_one_hot = True)
+   fs.feature_importances.head()
+
+由于要素重要性已更改，删除的要素数量之间存在轻微差异。
+由missing，single_unique和collinear确定要删除的特征数量将保持不变，因为它们是确定性的，但是zero_importance和low_importance的特征数量可能因训练模型而有所不同
+多次。
+
+.. _8-conclusions:
+
+8 Conclusions
+-------------
+
+上面展示了如何使用FeatureSelector类从数据集中删除功能。
+这个实现有一些重要的注意事项：
+
+-  功能重要性将在机器学习模型的多次运行中发生变化
+
+-  决定是否保留通过独热编码创建的额外功能
+
+-  尝试各种参数的几个不同值，以确定哪些参数最适合机器学习任务
+
+-  对于相同的参数，缺失，单一唯一和共线的输出将保持相同
+
+-  特征选择是机器学习工作流程的关键步骤，可能需要多次迭代才能进行优化
