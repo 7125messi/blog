@@ -10,6 +10,8 @@ Welcome to 7125MESSI's BLOG's documentation!
    :maxdepth: 2
    :caption: 目录
 
+   test
+   
    Python并行计算
 
    Spark分布式计算
