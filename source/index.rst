@@ -28,6 +28,8 @@ Welcome to 7125MESSI's BLOG's documentation!
 
    LightGBM在Spark实战
 
+   GBDT怎么解决时间序列中外推能力差的问题
+
    半参数回归模型
 
    基于UNet神经网络的城市人流预测
