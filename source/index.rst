@@ -30,6 +30,8 @@ Welcome to 7125MESSI's BLOG's documentation!
 
    GBDT怎么解决时间序列中外推能力差的问题
 
+   时间序列预测模型
+
    半参数回归模型
 
    基于UNet神经网络的城市人流预测
