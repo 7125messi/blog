@@ -288,6 +288,11 @@ Node计算，然后每个节点则利用由原来的Pandas API计算即可。
        
        spark.stop()
 
+.. _1-sdfrddmaplambda-x-xparallelcolumn-xgroupbykeyflatmaplambda-x-funcx1-var1bvarnb-var1--varn:
+
+1 sdf.rdd.map(lambda x: (x[parallel_column], x)).groupByKey().flatMap(lambda x: func(x[1], var1_b,...,varn_b, var1, ..., varn))
+===============================================================================================================================
+
 以上述代码举例说明：
 
 -  offline test 是在线下测试的代码，如函数 feature_engineer
@@ -317,6 +322,11 @@ Node计算，然后每个节点则利用由原来的Pandas API计算即可。
 可以看到，这里分布式计算较为灵活，可以根据\ **某个字段或某几个字段**\ （需要根据自己的数据需求）做map分组分发，比如这里我是根据
 category 分组分发计算（我这里的数据必须根据每个category
 训练模型），非常实用。
+
+.. _2-rddflatmaplambda-x-funcvar1bvarnb-var1--varn-x:
+
+2 rdd.flatMap(lambda x: func(var1_b,...,varn_b, var1, ..., varn, x))
+====================================================================
 
 当然有的时候我们还可以根据下面的方式分组分发，这里我是根据每个门店 store
 做分发：
@@ -357,3 +367,129 @@ category 分组分发计算（我这里的数据必须根据每个category
        )
        output_formated_data_sdf = output_formated_data_row_list.toDF().repartition(24).persist()
        ......
+
+.. _3-rddgroupby:
+
+3 rdd.groupBy()
+===============
+
+该方法稍微复杂点，需要对着下面示例好好体会
+
+先看个简单的分组案例：
+
+.. code:: python
+
+   rdd = spark.sparkContext.parallelize(['18039', '47839'])
+   result = rdd.groupBy(lambda x: int(x) % 50).collect()
+
+   sorted([(x, sorted(y)) for (x, y) in result])   
+
+   #############################################
+   [(39, ['18039', '47839'])]
+
+.. code:: python
+
+   paralizm_num = 50
+
+   # sale_sdf.rdd 根据 global_store_number 与 paralizm_num 取余进行门店分组号[0,1,2,3,...,49]
+   # error_dis_rdd 根据 global_store_number 与 paralizm_num 取余进行门店分组号[0,1,2,3,...,49]
+
+   sale_sdf_g_rdd = sale_sdf.rdd.\
+               groupBy(lambda x: int(x['global_store_number']) % paralizm_num, numPartitions=paralizm_num)
+
+   error_dis_r_rdd = error_dis_rdd.\
+               groupBy(lambda x: int(x[1]) % paralizm_num, numPartitions=paralizm_num)
+
+.. code:: python
+
+   sorted([(x, sorted(y)) for (x, y) in sale_sdf_g_rdd.take(1)])
+
+   #############################################################
+   [(0,
+     [Row(global_store_number='15000', notional_item_cd='NON10151', business_day='2022-05-25', pred_sale_qty=0.0, restore_sale_qty=0.0, secondary_category='Sandwich & Wrap', row_number=1),
+      Row(global_store_number='15000', notional_item_cd='NON10151', business_day='2022-05-26', pred_sale_qty=0.0, restore_sale_qty=0.0, secondary_category='Sandwich & Wrap', row_number=1),
+      Row(global_store_number='15000', notional_item_cd='NON10151', business_day='2022-05-27', pred_sale_qty=0.0, restore_sale_qty=0.0, secondary_category='Sandwich & Wrap', row_number=1),
+      Row(global_store_number='15300', notional_item_cd='NON319', business_day='2022-06-22', pred_sale_qty=2.0, restore_sale_qty=0.0, secondary_category='Sandwich & Wrap', row_number=1),
+      Row(global_store_number='15300', notional_item_cd='NON319', business_day='2022-06-23', pred_sale_qty=2.0, restore_sale_qty=2.0, secondary_category='Sandwich & Wrap', row_number=1),
+      Row(global_store_number='15300', notional_item_cd='NON319', business_day='2022-06-24', pred_sale_qty=3.0, restore_sale_qty=3.0, secondary_category='Sandwich & Wrap', row_number=1),
+      ...])]
+
+.. code:: python
+
+   sorted([(x, sorted(y)) for (x, y) in error_dis_r_rdd.take(1)])
+
+   #############################################################
+   [(0,
+     [('Bakery', '15000', -6.0    0.022851
+       -5.0    0.038620
+       -4.0    0.059333
+       -3.0    0.082858
+       -2.0    0.105180
+       -1.0    0.121365
+       -0.0    0.127296
+        1.0    0.121365
+        2.0    0.105180
+        3.0    0.082858
+        4.0    0.059333
+        5.0    0.038620
+        6.0    0.022851
+        7.0    0.012290
+       dtype: float64, 1),
+      ('Bakery',
+       '15300',
+       -3.0    0.053838
+       -2.0    0.121795
+       -1.0    0.198771
+       -0.0    0.234024
+        1.0    0.198771
+        2.0    0.121795
+        3.0    0.053838
+        4.0    0.017169
+       dtype: float64,
+       1),
+      ....
+
+.. code:: python
+
+   # merge_rdd 是由sale_sdf_g_rdd 和 error_dis_r_rdd 根据 门店分组号[0,1,2,3,...,49] 关联
+   # 得到每个门店分组号下的若干个门店的sale_sdf_sub 和 error_dis_rdd_sub
+   # 该方法适合多个df 同时分发
+   merge_rdd = sale_sdf_g_rdd.join(error_dis_r_rdd).repartition(paralizm_num)
+   [(x, y) for (x, y) in merge_rdd.take(10)]
+
+   #############################################################
+   [(0,
+     (<pyspark.resultiterable.ResultIterable at 0x7f0f719fc8d0>,
+      <pyspark.resultiterable.ResultIterable at 0x7f0f5abff128>)
+   )
+   ...
+   ]
+
+.. code:: python
+
+   def map_thaw_sim(...,x,...):
+       store_group = x[0]
+       cate_sale_df = create_dataframe_new(x[1][0])
+       error_dist_df = pd.DataFrame(data=x[1][1], columns=error_dist_columns)
+       ...
+       row_list = create_row_list(cate_sale_df)
+       sku_row_list = create_row_list(error_dist_df)
+       return row_list, sku_row_list
+
+   simulation_rdd = merge_rdd.map(lambda x: map_thaw_sim(...,x,...)).persist()
+   store_res_row_list = simulation_rdd.flatMap(lambda x: x[0]).repartition(paralizm_num)
+   store_res_sku_row_list = simulation_rdd.flatMap(lambda x: x[1]).repartition(paralizm_num)
+
+   """
+       x is a Tuple
+       
+       x[0]: store_group, 即门店分组号[0,1,2,3,...,49]
+       x[1]: (cate_sale_df, error_dist_df) 某个门店分组号下对应的两个df
+       
+       [(0,
+         (
+               <pyspark.resultiterable.ResultIterable at 0x7f0f719fc8d0>,
+               <pyspark.resultiterable.ResultIterable at 0x7f0f5abff128>
+          )
+       )]
+   """
